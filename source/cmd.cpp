@@ -5,6 +5,7 @@
 #include <iomanip>
 #include <iostream>
 #include <limits>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <string.h>
@@ -35,7 +36,7 @@ opt::BoxingGreedy::Metric parse_metric(const char *s)
 
 std::string parse_method(const char *s)
 {
-    if (strcmp(s, "greedy") != 0 || strcmp(s, "heighborhood") != 0)
+    if (strcmp(s, "greedy") != 0 || strcmp(s, "neighborhood") != 0)
         throw std::runtime_error("Invalid method value");
     else return s;
 }
@@ -90,13 +91,15 @@ int _main(int argc, char **argv)
     }
 
     //Call
+    std::unique_ptr<opt::Boxing> guard;
     opt::Boxing::Solution solution;
     std::vector<opt::Boxing::Solution> log;
     double timer;
     if (method == "greedy")
     {
-        opt::BoxingGreedy problem(box_size, item_number, item_size_min, item_size_max, metric);
-        solution = opt::greedy(problem, &log, &timer);
+        opt::BoxingGreedy *boxing_greedy = new opt::BoxingGreedy(box_size, item_number, item_size_min, item_size_max, metric);
+        guard.reset(boxing_greedy);
+        solution = opt::greedy(*boxing_greedy, &log, &timer);
     }
     else
     {
@@ -113,7 +116,7 @@ int _main(int argc, char **argv)
     }
 
     //Print
-    std::cout << "Solved in " << std::setprecision(1) << timer << " seconds and " << log.size() << " iterations" << std::endl;
+    std::cout << "Solved in " << std::setprecision(1) << timer << " seconds and " << log.size() - 1 << " iterations" << std::endl;
     std::cout << "Solution:" << std::endl;
     for (unsigned int i = 0; i < solution.size(); i++)
     {
@@ -126,7 +129,7 @@ int _main(int argc, char **argv)
                 std::cout << "[" << r.rectangle.height << ", " << r.rectangle.width << "] ";
             else
                 std::cout << "[" << r.rectangle.width << ", " << r.rectangle.height << "] ";
-            std::cout << "(" << r.x << ", " << r.y << ") ";
+            std::cout << "(" << r.x << ", " << r.y << ") " << std::endl;
         }
     }
     return 0;

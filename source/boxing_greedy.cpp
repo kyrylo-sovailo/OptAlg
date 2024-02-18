@@ -11,7 +11,7 @@ const opt::Boxing::ElementContainer &opt::BoxingGreedy::elements() const
     return _rectangles;
 }
 
-bool opt::BoxingGreedy::can_join(const Solution &solution, const Element &element) const
+bool opt::BoxingGreedy::can_join(const Solution &, const Element &) const
 {
     return true;
 }
@@ -31,10 +31,7 @@ opt::Boxing::Solution opt::BoxingGreedy::join(Solution &&solution, const Element
 
     //Fit in new box
     solution.push_back(Box());
-    BoxedRectangle boxed(element);
-    boxed.x = 0;
-    boxed.y = 0;
-    boxed.transposed = element.height > element.width;
+    BoxedRectangle boxed(element, 0, 0, element.height > element.width);
     solution.back().rectangles.push_back(boxed);
     return std::move(solution);
 }

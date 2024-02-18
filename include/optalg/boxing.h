@@ -20,7 +20,7 @@ namespace opt
             const Rectangle &rectangle;
             unsigned int x, y;
             bool transposed;
-            BoxedRectangle(const Rectangle &rectangle);
+            BoxedRectangle(const Rectangle &rectangle, unsigned int x, unsigned int y, bool transposed);
         };
         
         struct Box
