@@ -20,13 +20,13 @@ opt::BoxingNeighborhoodOrder::SolutionContainer opt::BoxingNeighborhoodOrder::ne
     std::vector<Solution> neighborhood;
 
     //Adding regular permutations
-    for (unsigned int i = 0; i < solution.size(); i++)
+    for (unsigned int rectangle_i = 0; rectangle_i < solution.size(); rectangle_i++)
     {
-        for (unsigned int j = i + 1; j <= i + _window && j < solution.size(); j++)
+        for (unsigned int new_rectangle_i = rectangle_i + 1; new_rectangle_i <= rectangle_i + _window && new_rectangle_i < solution.size(); new_rectangle_i++)
         {
             neighborhood.push_back(solution);
-            neighborhood.back()[j] = solution[i];
-            neighborhood.back()[i] = solution[j];
+            neighborhood.back()[new_rectangle_i] = solution[rectangle_i];
+            neighborhood.back()[rectangle_i] = solution[new_rectangle_i];
         }
     }
 
@@ -69,7 +69,7 @@ double opt::BoxingNeighborhoodOrder::heuristic(const Solution &solution, unsigne
 {
     std::vector<Box> boxes = get_boxes(solution);
     if (boxes.empty()) return 0.0;
-    else return solution.size() - 1 + static_cast<double>(least_occupied_space(boxes)) / (_box_size * _box_size);
+    else return boxes.size() - 1 + static_cast<double>(least_occupied_space(boxes)) / (_box_size * _box_size);
 }
 
 bool opt::BoxingNeighborhoodOrder::good(const Solution &) const
