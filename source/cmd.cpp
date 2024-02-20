@@ -10,6 +10,13 @@
 #include <string>
 #include <string.h>
 
+bool parse_bool(const char *s)
+{
+    if (strcmp(s, "true") == 0) return true;
+    else if (strcmp(s, "false") == 0) return false;
+    else throw std::runtime_error("Invalid boolean value");
+}
+
 unsigned int parse_uint(const char *s)
 {
     char *end;
@@ -50,6 +57,9 @@ std::string parse_heuristic(const char *s)
 
 int _main(int argc, char **argv)
 {
+    //General
+    bool verbose = false;
+
     //Neighborhood
     unsigned int iter_max = std::numeric_limits<unsigned int>::max();
     double time_max = std::numeric_limits<double>::infinity();
@@ -59,7 +69,7 @@ int _main(int argc, char **argv)
     unsigned int item_number = 100;
     unsigned int item_size_min = 1;
     unsigned int item_size_max = 5;
-    std::string method = "neighborhood";
+    std::string method = "greedy";
 
     //BoxingGreedy
     opt::BoxingGreedy::Metric metric = opt::BoxingGreedy::Metric::area;
@@ -76,7 +86,8 @@ int _main(int argc, char **argv)
         else if (i == argc - 1) throw std::runtime_error("Argument missing value");
         const char *argument = argv[i];
         const char *value = argv[i + 1];
-        if (strcmp(argument, "--iter_max") == 0) iter_max = parse_uint(value);
+        if (strcmp(argument, "--verbose") == 0) verbose = parse_bool(value);
+        else if (strcmp(argument, "--iter_max") == 0) iter_max = parse_uint(value);
         else if (strcmp(argument, "--time_max") == 0) time_max = parse_double(value);
         else if (strcmp(argument, "--box_size") == 0) box_size = parse_uint(value);
         else if (strcmp(argument, "--item_number") == 0) item_number = parse_uint(value);
@@ -91,7 +102,7 @@ int _main(int argc, char **argv)
     }
 
     //Call
-    std::unique_ptr<opt::Boxing> guard;
+    std::unique_ptr<opt::Boxing> boxing;
     std::vector<opt::Boxing::Box> boxes;
     unsigned int iteration_count;
     double timer;
@@ -99,7 +110,7 @@ int _main(int argc, char **argv)
     {
         typedef opt::BoxingGreedy Problem;
         Problem *problem = new Problem(box_size, item_number, item_size_min, item_size_max, metric);
-        guard.reset(problem);
+        boxing.reset(problem);
         std::vector<Problem::Solution> log;
         Problem::Solution solution = opt::greedy(*problem, &log, &timer);
         boxes = problem->get_boxes(solution);
@@ -109,7 +120,7 @@ int _main(int argc, char **argv)
     {
         typedef opt::BoxingNeighborhoodGeometry Problem;
         Problem *problem = new Problem(box_size, item_number, item_size_min, item_size_max);
-        guard.reset(problem);
+        boxing.reset(problem);
         std::vector<Problem::Solution> log;
         Problem::Solution solution = opt::neighborhood(*problem, iter_max, time_max, &log, &timer);
         boxes = problem->get_boxes(solution);
@@ -119,7 +130,7 @@ int _main(int argc, char **argv)
     {
         typedef opt::BoxingNeighborhoodOrder Problem;
         Problem *problem = new Problem(box_size, item_number, item_size_min, item_size_max);
-        guard.reset(problem);
+        boxing.reset(problem);
         std::vector<Problem::Solution> log;
         Problem::Solution solution = opt::neighborhood(*problem, iter_max, time_max, &log, &timer);
         boxes = problem->get_boxes(solution);
@@ -129,7 +140,7 @@ int _main(int argc, char **argv)
     {
         typedef opt::BoxingNeighborhoodGeometryOverlap Problem;
         Problem *problem = new Problem(box_size, item_number, item_size_min, item_size_max, desired_iter);
-        guard.reset(problem);
+        boxing.reset(problem);
         std::vector<Problem::Solution> log;
         Problem::Solution solution = opt::neighborhood(*problem, iter_max, time_max, &log, &timer);
         boxes = problem->get_boxes(solution);
@@ -141,8 +152,9 @@ int _main(int argc, char **argv)
     std::cout << "Solution:" << std::endl;
     for (unsigned int i = 0; i < boxes.size(); i++)
     {
-        std::cout << "Box " << i << ":" << std::endl;
-        for (unsigned int j = 0; j < boxes[i].rectangles.size(); j++)
+        const double percentage = static_cast<double>(boxing->occupied_space(boxes[i])) / (boxing->box_size() * boxing->box_size());
+        std::cout << "Box " << i << ": occupied " << std::setprecision(4) << 100 * percentage << "%" << std::endl;
+        if (verbose) for (unsigned int j = 0; j < boxes[i].rectangles.size(); j++)
         {
             const opt::Boxing::BoxedRectangle &r = boxes[i].rectangles[j];
             std::cout << "    Rectangle " << j << ": ";

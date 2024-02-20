@@ -113,7 +113,7 @@ double opt::BoxingNeighborhoodGeometryOverlap::heuristic(const Solution &solutio
     }
 
     if (solution.empty()) return 0.0;
-    else return solution.size() - static_cast<double>(_least_occupied_space(solution)) / (_box_size * _box_size) + penalty;
+    else return solution.size() - static_cast<double>(least_occupied_space(solution)) / (_box_size * _box_size) + penalty;
 }
 
 bool opt::BoxingNeighborhoodGeometryOverlap::good(const Solution &solution) const

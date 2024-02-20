@@ -126,7 +126,7 @@ opt::BoxingNeighborhoodGeometry::SolutionContainer opt::BoxingNeighborhoodGeomet
 double opt::BoxingNeighborhoodGeometry::heuristic(const Solution &solution, unsigned int) const
 {
     if (solution.empty()) return 0.0;
-    else return solution.size() - static_cast<double>(_least_occupied_space(solution)) / (_box_size * _box_size);
+    else return solution.size() - static_cast<double>(least_occupied_space(solution)) / (_box_size * _box_size);
 }
 
 bool opt::BoxingNeighborhoodGeometry::good(const Solution &) const

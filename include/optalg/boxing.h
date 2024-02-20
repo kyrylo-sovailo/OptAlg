@@ -50,11 +50,10 @@ namespace opt
         std::pair<bool, BoxedRectangle> _can_put_rectangle(const Rectangle &rectangle, const BoxImage &image) const;
         unsigned int _put_rectangle(const Rectangle &rectangle, std::vector<std::pair<Box, BoxImage>> *boxes) const;
 
-        //Area calculation
-        unsigned int _occupied_space(const Box &box) const;
-        unsigned int _least_occupied_space(const std::vector<Box> &boxes) const;
-
     public:
         Boxing(unsigned int box_size, unsigned int item_number, unsigned int item_size_min, unsigned int item_size_max);
+        unsigned int box_size() const;
+        unsigned int occupied_space(const Box &box) const;
+        unsigned int least_occupied_space(const std::vector<Box> &boxes) const;
     };
 }
