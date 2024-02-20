@@ -1,7 +1,7 @@
 #include "../include/optalg/greedy.hpp"
-//#include "../include/optalg/neighborhood.hpp"
+#include "../include/optalg/neighborhood.hpp"
 #include "../include/optalg/boxing_greedy.h"
-//#include "../include/optalg/boxing_neighborhood.h"
+#include "../include/optalg/boxing_neighborhood.h"
 #include <iomanip>
 #include <iostream>
 #include <limits>
@@ -59,7 +59,7 @@ int _main(int argc, char **argv)
     unsigned int item_number = 100;
     unsigned int item_size_min = 1;
     unsigned int item_size_max = 5;
-    std::string method = "greedy";
+    std::string method = "neighborhood";
 
     //BoxingGreedy
     opt::BoxingGreedy::Metric metric = opt::BoxingGreedy::Metric::area;
@@ -92,43 +92,64 @@ int _main(int argc, char **argv)
 
     //Call
     std::unique_ptr<opt::Boxing> guard;
-    opt::Boxing::Solution solution;
-    std::vector<opt::Boxing::Solution> log;
+    std::vector<opt::Boxing::Box> boxes;
+    unsigned int iteration_count;
     double timer;
     if (method == "greedy")
     {
-        opt::BoxingGreedy *boxing_greedy = new opt::BoxingGreedy(box_size, item_number, item_size_min, item_size_max, metric);
-        guard.reset(boxing_greedy);
-        solution = opt::greedy(*boxing_greedy, &log, &timer);
+        typedef opt::BoxingGreedy Problem;
+        Problem *problem = new Problem(box_size, item_number, item_size_min, item_size_max, metric);
+        guard.reset(problem);
+        std::vector<Problem::Solution> log;
+        Problem::Solution solution = opt::greedy(*problem, &log, &timer);
+        boxes = problem->get_boxes(solution);
+        iteration_count = log.size() - 1;
+    }
+    else if (heuristic == "geometry")
+    {
+        typedef opt::BoxingNeighborhoodGeometry Problem;
+        Problem *problem = new Problem(box_size, item_number, item_size_min, item_size_max);
+        guard.reset(problem);
+        std::vector<Problem::Solution> log;
+        Problem::Solution solution = opt::neighborhood(*problem, iter_max, time_max, &log, &timer);
+        boxes = problem->get_boxes(solution);
+        iteration_count = log.size() - 1;
+    }
+    else if (heuristic == "order")
+    {
+        typedef opt::BoxingNeighborhoodOrder Problem;
+        Problem *problem = new Problem(box_size, item_number, item_size_min, item_size_max);
+        guard.reset(problem);
+        std::vector<Problem::Solution> log;
+        Problem::Solution solution = opt::neighborhood(*problem, iter_max, time_max, &log, &timer);
+        boxes = problem->get_boxes(solution);
+        iteration_count = log.size() - 1;
     }
     else
     {
-        /*
-        opt::BoxingNeighborhood *problem;
-        if (heuristic == "geometry")
-            problem = new opt::BoxingNeighborhoodGeometry(box_size, item_number, item_size_min, item_size_max);
-        else if (heuristic == "order")
-            problem = new opt::BoxingNeighborhoodOrder(box_size, item_number, item_size_min, item_size_max);
-        else
-            problem = new opt::BoxingNeighborhoodGeometryOverlap(box_size, item_number, item_size_min, item_size_max, desired_iter);
-        solution = opt::neighborhood(*problem, iter_max, time_max, &log, &timer);
-        */
+        typedef opt::BoxingNeighborhoodGeometryOverlap Problem;
+        Problem *problem = new Problem(box_size, item_number, item_size_min, item_size_max, desired_iter);
+        guard.reset(problem);
+        std::vector<Problem::Solution> log;
+        Problem::Solution solution = opt::neighborhood(*problem, iter_max, time_max, &log, &timer);
+        boxes = problem->get_boxes(solution);
+        iteration_count = log.size() - 1;
     }
 
     //Print
-    std::cout << "Solved in " << std::setprecision(1) << timer << " seconds and " << log.size() - 1 << " iterations" << std::endl;
+    std::cout << "Solved in " << std::setprecision(1) << timer << " seconds and " << iteration_count << " iterations" << std::endl;
     std::cout << "Solution:" << std::endl;
-    for (unsigned int i = 0; i < solution.size(); i++)
+    for (unsigned int i = 0; i < boxes.size(); i++)
     {
         std::cout << "Box " << i << ":" << std::endl;
-        for (unsigned int j = 0; j < solution[i].rectangles.size(); j++)
+        for (unsigned int j = 0; j < boxes[i].rectangles.size(); j++)
         {
-            const opt::Boxing::BoxedRectangle &r = solution[i].rectangles[j];
+            const opt::Boxing::BoxedRectangle &r = boxes[i].rectangles[j];
             std::cout << "    Rectangle " << j << ": ";
             if (r.transposed)
-                std::cout << "[" << r.rectangle.height << ", " << r.rectangle.width << "] ";
+                std::cout << "[" << r.rectangle->height << ", " << r.rectangle->width << "] ";
             else
-                std::cout << "[" << r.rectangle.width << ", " << r.rectangle.height << "] ";
+                std::cout << "[" << r.rectangle->width << ", " << r.rectangle->height << "] ";
             std::cout << "(" << r.x << ", " << r.y << ") " << std::endl;
         }
     }

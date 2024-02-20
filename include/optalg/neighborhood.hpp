@@ -20,7 +20,7 @@ namespace opt
      - bool Problem::good(Solution solution) returns if solution is good enough and algorithm can terminate
     */
     template <class Problem> typename Problem::Solution neighborhood(
-        const Problem &problem,
+        Problem &problem,
         unsigned int iter_max,
         double time_max,
         std::vector<typename Problem::Solution> *log,
@@ -41,17 +41,17 @@ namespace opt
         while (true)
         {
             //Get heuristic
-            double solution_heuristic = problem(solution, iter);
+            double solution_heuristic = problem.heuristic(solution, iter);
                     
             //Get neighborhood
-            Container neighbors = problem.neighbors(solution, iter);
+            Container neighbors = problem.neighbors(solution);
             
             //Search best neighbor
             auto best_neighbor = neighbors.cend();
             double best_neighbor_heuristic = -std::numeric_limits<double>::infinity();
             for (auto neighbor = neighbors.cbegin(); neighbor != neighbors.cend(); neighbor++)
             {
-                double neighbor_heuristic = problem(*neighbor, iter);
+                double neighbor_heuristic = problem.heuristic(*neighbor, iter);
                 if (neighbor_heuristic > solution_heuristic && neighbor_heuristic > best_neighbor_heuristic)
                 {
                     best_neighbor = neighbor;

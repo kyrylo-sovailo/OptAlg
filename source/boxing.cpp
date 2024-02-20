@@ -1,51 +1,72 @@
 #include "../include/optalg/boxing.h"
 #include <random>
-#include <algorithm>
-#include <type_traits>
 
 opt::Boxing::Rectangle::Rectangle(unsigned int width, unsigned int height)
     : width(width), height(height) {}
 
 opt::Boxing::BoxedRectangle::BoxedRectangle(const Rectangle &rectangle, unsigned int x, unsigned int y, bool transposed)
-    : rectangle(rectangle), x(x), y(y), transposed(transposed) {}
+    : rectangle(&rectangle), x(x), y(y), transposed(transposed) {}
 
-unsigned int opt::Boxing::_get_end_x(const BoxedRectangle &rectangle) const
+unsigned int opt::Boxing::BoxedRectangle::x_end() const
 {
-    return rectangle.x + (rectangle.transposed ? rectangle.rectangle.height : rectangle.rectangle.width);
+    return x + (transposed ? rectangle->height : rectangle->width);
 }
 
-unsigned int opt::Boxing::_get_end_y(const BoxedRectangle &rectangle) const
+unsigned int opt::Boxing::BoxedRectangle::y_end() const
 {
-    return rectangle.y + (rectangle.transposed ? rectangle.rectangle.width : rectangle.rectangle.height);
+    return y + (transposed ? rectangle->width : rectangle->height);
 }
 
-bool opt::Boxing::_fits(const BoxedRectangle &rectangle, const Box &box) const
+opt::Boxing::BoxImage opt::Boxing::_image_create() const
 {
-    //Check borders
-    const unsigned int end_x = _get_end_x(rectangle);
-    const unsigned int end_y = _get_end_y(rectangle);
-    if (end_x > _box_size || end_y > _box_size) return false;
-    
-    //Check existing rectangles
-    for (auto rect = box.rectangles.cbegin(); rect != box.rectangles.cend(); rect++)
+    return BoxImage(_box_size * _box_size, false);
+}
+
+void opt::Boxing::_image_add(BoxImage *image, const BoxedRectangle &rectangle) const
+{
+    for (unsigned int y = rectangle.y; y < rectangle.y_end(); y++)
     {
-        if (!(end_x <= rect->x || rectangle.x >= _get_end_x(*rect))) return false;
-        if (!(end_y <= rect->y || rectangle.y >= _get_end_y(*rect))) return false;
+        for (unsigned int x = rectangle.x; x < rectangle.x_end(); x++)
+        {
+            (*image)[_box_size * y + x] = true;
+        }
     }
-    return  true;
 }
 
-bool opt::Boxing::_fits(const BoxedRectangle &rectangle, const std::vector<bool> &image) const
+void opt::Boxing::_image_add_all(BoxImage *image, const Box &box) const
 {
-    //Check borders
-    const unsigned int end_x = _get_end_x(rectangle);
-    const unsigned int end_y = _get_end_y(rectangle);
-    if (end_x > _box_size || end_y > _box_size) return false;
+    for (auto rectangle = box.rectangles.cbegin(); rectangle != box.rectangles.cend(); rectangle++)
+        _image_add(image, *rectangle);
+}
 
-    //Check existing rectangles
-    for (unsigned int y = rectangle.y; y < end_y; y++)
+void opt::Boxing::_image_remove(BoxImage *image, const BoxedRectangle &rectangle) const
+{
+    for (unsigned int y = rectangle.y; y < rectangle.y_end(); y++)
     {
-        for (unsigned int x = rectangle.x; x < end_x; x++)
+        for (unsigned int x = rectangle.x; x < rectangle.x_end(); x++)
+        {
+            (*image)[_box_size * y + x] = false;
+        }
+    }
+}
+
+void opt::Boxing::_image_clear(BoxImage *image) const
+{
+    image->assign(_box_size * _box_size, false);
+}
+
+bool opt::Boxing::_can_put_rectangle(const BoxedRectangle &rectangle) const
+{
+    return rectangle.x_end() <= _box_size && rectangle.y_end() <= _box_size;
+}
+
+bool opt::Boxing::_can_put_rectangle(const BoxedRectangle &rectangle, const BoxImage &image) const
+{
+    if (!_can_put_rectangle(rectangle)) return false;
+
+    for (unsigned int y = rectangle.y; y < rectangle.y_end(); y++)
+    {
+        for (unsigned int x = rectangle.x; x < rectangle.x_end(); x++)
         {
             if (image[_box_size * y + x]) return false;
         }
@@ -53,29 +74,8 @@ bool opt::Boxing::_fits(const BoxedRectangle &rectangle, const std::vector<bool>
     return true;
 }
 
-std::vector<bool> opt::Boxing::_create_image(const Box &box) const
+std::pair<bool, opt::Boxing::BoxedRectangle> opt::Boxing::_can_put_rectangle(const Rectangle &rectangle, const BoxImage &image) const
 {
-    std::vector<bool> image(_box_size * _box_size, false);
-    for (auto rectangle = box.rectangles.cbegin(); rectangle != box.rectangles.cend(); rectangle++)
-    {
-        const unsigned int end_x = _get_end_x(*rectangle);
-        const unsigned int end_y = _get_end_y(*rectangle);
-        for (unsigned int yi = rectangle->y; yi < end_y; yi++)
-        {
-            for (unsigned int xi = rectangle->x; xi < end_x; xi++)
-            {
-                image[_box_size * yi + xi] = true;
-            }
-        }
-    }
-    return image;
-}
-
-std::pair<bool, opt::Boxing::BoxedRectangle> opt::Boxing::_fit(const Rectangle &rectangle, const Box &box) const
-{
-    //Create image
-    std::vector<bool> image = _create_image(box);
-
     //Try to fit horizontally
     const bool tall = rectangle.height > rectangle.width;
     const unsigned int width = tall ? rectangle.height : rectangle.width;
@@ -85,7 +85,7 @@ std::pair<bool, opt::Boxing::BoxedRectangle> opt::Boxing::_fit(const Rectangle &
     {
         for (boxed_rectangle.x = 0; boxed_rectangle.x < _box_size - width + 1; boxed_rectangle.x++)
         {
-            if (_fits(boxed_rectangle, image)) return { true, boxed_rectangle };
+            if (_can_put_rectangle(boxed_rectangle, image)) return { true, boxed_rectangle };
         }
     }
 
@@ -95,20 +95,64 @@ std::pair<bool, opt::Boxing::BoxedRectangle> opt::Boxing::_fit(const Rectangle &
     {
         for (boxed_rectangle.x = 0; boxed_rectangle.x < _box_size - height + 1; boxed_rectangle.x++)
         {
-            if (_fits(boxed_rectangle, image)) return { true, boxed_rectangle };
+            if (_can_put_rectangle(boxed_rectangle, image)) return { true, boxed_rectangle };
         }
     }
 
     return { false, boxed_rectangle };
 }
 
+unsigned int opt::Boxing::_put_rectangle(const Rectangle &rectangle, std::vector<std::pair<Box, BoxImage>> *boxes) const
+{
+    //Try to fit in existing boxes
+    for (unsigned int box_i = 0; box_i < boxes->size(); box_i++)
+    {
+        std::pair<Box, BoxImage> &box = (*boxes)[box_i];
+        std::pair<bool, BoxedRectangle> fit = _can_put_rectangle(rectangle, box.second);
+        if (fit.first)
+        {
+            box.first.rectangles.push_back(fit.second);
+            _image_add(&box.second, fit.second);
+            return box_i;
+        }
+    }
+
+    //Fit in new box
+    boxes->push_back({ Box(), _image_create() });
+    BoxedRectangle boxed_rectangle(rectangle, 0, 0, rectangle.height > rectangle.width);
+    boxes->back().first.rectangles.push_back(boxed_rectangle);
+    _image_add(&boxes->back().second, boxed_rectangle);
+    return boxes->size() - 1;
+}
+
+unsigned int opt::Boxing::_occupied_space(const Box &box) const
+{
+    unsigned int occupied = 0;
+    for (auto rectangle = box.rectangles.cbegin(); rectangle != box.rectangles.cend(); rectangle++)
+    {
+        occupied += (rectangle->rectangle->width * rectangle->rectangle->height);
+    }
+    return occupied;
+}
+
+unsigned int opt::Boxing::_least_occupied_space(const std::vector<Box> &boxes) const
+{
+    if (boxes.empty()) return 0;
+    unsigned int least_occupied = _occupied_space(boxes[0]);
+    for (auto box = boxes.cbegin() + 1; box != boxes.cend(); box++)
+    {
+        const unsigned int occupied = _occupied_space(*box);
+        if (occupied < least_occupied) least_occupied = occupied;
+    }
+    return least_occupied;
+}
+
 opt::Boxing::Boxing(unsigned int box_size, unsigned int item_number, unsigned int item_size_min, unsigned int item_size_max)
     : _box_size(box_size)
 {
-    std::default_random_engine engine;
     std::uniform_int_distribution<unsigned int> distribution(item_size_min, item_size_max);
     for (unsigned int i = 0; i < item_number; i++)
     {
-        _rectangles.push_back(Rectangle(distribution(engine), distribution(engine)));
+        _rectangles.push_back(Rectangle(distribution(_engine), distribution(_engine)));
     }
 }
