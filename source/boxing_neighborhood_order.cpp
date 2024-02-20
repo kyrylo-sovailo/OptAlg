@@ -2,8 +2,9 @@
 #include <random>
 #include <vector>
 
-opt::BoxingNeighborhoodOrder::BoxingNeighborhoodOrder(unsigned int box_size, unsigned int item_number, unsigned int item_size_min, unsigned int item_size_max)
-    : Boxing(box_size, item_number, item_size_min, item_size_max)
+opt::BoxingNeighborhoodOrder::BoxingNeighborhoodOrder(unsigned int box_size, unsigned int item_number, unsigned int item_size_min, unsigned int item_size_max,
+    unsigned int window)
+    : Boxing(box_size, item_number, item_size_min, item_size_max), _window(window)
 {
 }
 
@@ -16,18 +17,16 @@ opt::BoxingNeighborhoodOrder::Solution opt::BoxingNeighborhoodOrder::initial() c
 
 opt::BoxingNeighborhoodOrder::SolutionContainer opt::BoxingNeighborhoodOrder::neighbors(const Solution &solution)
 {
-    const unsigned int window = 2;
     std::vector<Solution> neighborhood;
 
     //Adding regular permutations
     for (unsigned int i = 0; i < solution.size(); i++)
     {
-        for (unsigned int j = i + 1; j <= i + window && j < solution.size(); j++)
+        for (unsigned int j = i + 1; j <= i + _window && j < solution.size(); j++)
         {
-            Solution permutation = solution;
-            permutation[j] = solution[i];
-            permutation[i] = solution[j];
-            neighborhood.push_back(permutation);
+            neighborhood.push_back(solution);
+            neighborhood.back()[j] = solution[i];
+            neighborhood.back()[i] = solution[j];
         }
     }
 
@@ -55,12 +54,11 @@ opt::BoxingNeighborhoodOrder::SolutionContainer opt::BoxingNeighborhoodOrder::ne
         const bool empty = boxes_empty[box_i];
         if (empty)
         {
-            Solution permutation = solution;
             const Rectangle *rectangle = solution[rectangle_i];
             const unsigned int new_rectangle_i = distribution(_engine);
-            permutation.erase(permutation.begin() + rectangle_i);
-            permutation.insert(permutation.begin() + new_rectangle_i, rectangle);
-            neighborhood.push_back(permutation);
+            neighborhood.push_back(solution);
+            neighborhood.back().erase(neighborhood.back().begin() + rectangle_i);
+            neighborhood.back().insert(neighborhood.back().begin() + new_rectangle_i, rectangle);
         }
     }
 
@@ -71,7 +69,7 @@ double opt::BoxingNeighborhoodOrder::heuristic(const Solution &solution, unsigne
 {
     std::vector<Box> boxes = get_boxes(solution);
     if (boxes.empty()) return 0.0;
-    else return solution.size() - static_cast<double>(least_occupied_space(boxes)) / (_box_size * _box_size);
+    else return solution.size() - 1 + static_cast<double>(least_occupied_space(boxes)) / (_box_size * _box_size);
 }
 
 bool opt::BoxingNeighborhoodOrder::good(const Solution &) const

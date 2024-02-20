@@ -1,7 +1,6 @@
 #pragma once
-#include <algorithm>
+#include <cmath>
 #include <limits>
-#include <set>
 #include <vector>
 #include <time.h>
 
@@ -31,14 +30,14 @@ namespace opt
         typedef typename Problem::SolutionContainer Container;
         
         //Start clock
-        clock_t start = clock();
-        clock_t clock_max = static_cast<clock_t>(time_max * CLOCKS_PER_SEC);
-        unsigned int iter = 0;
+        const bool clock_limited = std::isfinite(time_max);
+        const clock_t clock_max = clock_limited ? static_cast<clock_t>(time_max * CLOCKS_PER_SEC) : 0;
+        const clock_t start = clock();
         
         //Iterate
         Solution solution = problem.initial();
         if (log != nullptr) log->push_back(solution);
-        while (true)
+        for (unsigned int iter = 0;; iter++)
         {
             //Get heuristic
             double solution_heuristic = problem.heuristic(solution, iter);
@@ -48,11 +47,11 @@ namespace opt
             
             //Search best neighbor
             auto best_neighbor = neighbors.cend();
-            double best_neighbor_heuristic = -std::numeric_limits<double>::infinity();
+            double best_neighbor_heuristic = std::numeric_limits<double>::infinity();
             for (auto neighbor = neighbors.cbegin(); neighbor != neighbors.cend(); neighbor++)
             {
                 double neighbor_heuristic = problem.heuristic(*neighbor, iter);
-                if (neighbor_heuristic > solution_heuristic && neighbor_heuristic > best_neighbor_heuristic)
+                if (neighbor_heuristic < solution_heuristic && neighbor_heuristic < best_neighbor_heuristic)
                 {
                     best_neighbor = neighbor;
                     best_neighbor_heuristic = neighbor_heuristic;
@@ -70,11 +69,10 @@ namespace opt
             //Exit
             if (problem.good(solution))
             {
-                if (best_neighbor == neighbors.cend()) break;   //No better neighbor
-                else if (iter >= iter_max) break;               //Maximum iteration reached
-                else if (clock() - start >= clock_max) break;   //Maximum time reached
+                if (best_neighbor == neighbors.cend()) break;                   //No better neighbor
+                else if (iter >= iter_max) break;                               //Maximum iteration reached
+                else if (clock_limited && clock() - start >= clock_max) break;  //Maximum time reached
             }
-            iter++;
         }
         
         //Return

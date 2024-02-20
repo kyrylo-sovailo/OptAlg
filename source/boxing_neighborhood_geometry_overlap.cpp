@@ -10,8 +10,9 @@ unsigned int opt::BoxingNeighborhoodGeometryOverlap::_overlapping_area(const Box
     else return (end_x - begin_x) * (end_y - begin_y);
 }
 
-opt::BoxingNeighborhoodGeometryOverlap::BoxingNeighborhoodGeometryOverlap(unsigned int box_size, unsigned int item_number, unsigned int item_size_min, unsigned int item_size_max, unsigned int desired_iter)
-    : Boxing(box_size, item_number, item_size_min, item_size_max), _desired_iter(desired_iter)
+opt::BoxingNeighborhoodGeometryOverlap::BoxingNeighborhoodGeometryOverlap(unsigned int box_size, unsigned int item_number, unsigned int item_size_min, unsigned int item_size_max,
+    unsigned int window, unsigned int desired_iter)
+    : Boxing(box_size, item_number, item_size_min, item_size_max), _window(window), _desired_iter(desired_iter)
 {}
 
 opt::BoxingNeighborhoodGeometryOverlap::Solution opt::BoxingNeighborhoodGeometryOverlap::initial()
@@ -33,7 +34,6 @@ opt::BoxingNeighborhoodGeometryOverlap::Solution opt::BoxingNeighborhoodGeometry
 
 opt::BoxingNeighborhoodGeometryOverlap::SolutionContainer opt::BoxingNeighborhoodGeometryOverlap::neighbors(const Solution &solution) const
 {
-    const unsigned int window = 2;
     std::vector<std::vector<Box>> neighborhood;
 
     //For every box
@@ -46,19 +46,19 @@ opt::BoxingNeighborhoodGeometryOverlap::SolutionContainer opt::BoxingNeighborhoo
             const BoxedRectangle &rectangle = box.rectangles[rectangle_i];
 
             //For every neighboring box
-            for (unsigned int box_j = std::max(box_i, window) - window;
-                box_j <= box_i + window && box_j < solution.size();
+            for (unsigned int box_j = std::max(box_i, _window) - _window;
+                box_j <= box_i + _window && box_j < solution.size();
                 box_j++)
             {
                 //For every neighboring y
                 BoxedRectangle move = rectangle;
-                for (move.y = std::max(rectangle.y, window) - window;
-                    move.y <= rectangle.y + window;
+                for (move.y = std::max(rectangle.y, _window) - _window;
+                    move.y <= rectangle.y + _window;
                     move.y++)
                 {
                     //For every neighboring x
-                    for (move.x = std::max(rectangle.x, window) - window;
-                        move.x <= rectangle.x + window;
+                    for (move.x = std::max(rectangle.x, _window) - _window;
+                        move.x <= rectangle.x + _window;
                         move.x++)
                     {
                         //Dismiss no-move
@@ -68,7 +68,12 @@ opt::BoxingNeighborhoodGeometryOverlap::SolutionContainer opt::BoxingNeighborhoo
                         if (_can_put_rectangle(move))
                         {
                             neighborhood.push_back(solution);
-                            neighborhood.back()[box_i].rectangles[rectangle_i] = move;
+                            if (box_j != box_i)
+                            {
+                                neighborhood.back()[box_i].rectangles.erase(neighborhood.back()[box_i].rectangles.begin() + rectangle_i);
+                                neighborhood.back()[box_j].rectangles.push_back(move);
+                            }
+                            else neighborhood.back()[box_i].rectangles[rectangle_i] = move;
                         }
 
                         //Check transpose move
@@ -76,7 +81,12 @@ opt::BoxingNeighborhoodGeometryOverlap::SolutionContainer opt::BoxingNeighborhoo
                         if (_can_put_rectangle(transpose_move))
                         {
                             neighborhood.push_back(solution);
-                            neighborhood.back()[box_i].rectangles[rectangle_i] = transpose_move;
+                            if (box_j != box_i)
+                            {
+                                neighborhood.back()[box_i].rectangles.erase(neighborhood.back()[box_i].rectangles.begin() + rectangle_i);
+                                neighborhood.back()[box_j].rectangles.push_back(transpose_move);
+                            }
+                            else neighborhood.back()[box_i].rectangles[rectangle_i] = transpose_move;
                         }
                     }
                 }
@@ -113,7 +123,7 @@ double opt::BoxingNeighborhoodGeometryOverlap::heuristic(const Solution &solutio
     }
 
     if (solution.empty()) return 0.0;
-    else return solution.size() - static_cast<double>(least_occupied_space(solution)) / (_box_size * _box_size) + penalty;
+    else return solution.size() - 1 + static_cast<double>(least_occupied_space(solution)) / (_box_size * _box_size) + penalty;
 }
 
 bool opt::BoxingNeighborhoodGeometryOverlap::good(const Solution &solution) const

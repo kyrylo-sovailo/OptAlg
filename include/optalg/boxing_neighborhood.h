@@ -7,8 +7,12 @@ namespace opt
     ///Boxing problem on which a local search algorithm can be applied, neighbors are items movements
     class BoxingNeighborhoodGeometry : public Boxing
     {
+    protected:
+        unsigned int _window;
+    
     public:
-        BoxingNeighborhoodGeometry(unsigned int box_size, unsigned int item_number, unsigned int item_size_min, unsigned int item_size_max);
+        BoxingNeighborhoodGeometry(unsigned int box_size, unsigned int item_number, unsigned int item_size_min, unsigned int item_size_max,
+            unsigned int window);
         
         //Implementing neighborhood requirements
         typedef std::vector<Box> Solution;
@@ -25,8 +29,12 @@ namespace opt
     ///Boxing problem on which a local search algorithm can be applied, neighbors are placement order rearrangements
     class BoxingNeighborhoodOrder : public Boxing
     {
+    protected:
+        unsigned int _window;
+    
     public:
-        BoxingNeighborhoodOrder(unsigned int box_size, unsigned int item_number, unsigned int item_size_min, unsigned int item_size_max);
+        BoxingNeighborhoodOrder(unsigned int box_size, unsigned int item_number, unsigned int item_size_min, unsigned int item_size_max,
+            unsigned int window);
         
         //Implementing neighborhood requirements
         typedef std::vector<const Rectangle*> Solution;
@@ -44,12 +52,14 @@ namespace opt
     class BoxingNeighborhoodGeometryOverlap : public Boxing
     {
     protected:
+        unsigned int _window;
         unsigned int _desired_iter;
 
         unsigned int _overlapping_area(const BoxedRectangle &a, const BoxedRectangle &b) const;
     
     public:
-        BoxingNeighborhoodGeometryOverlap(unsigned int box_size, unsigned int item_number, unsigned int item_size_min, unsigned int item_size_max, unsigned int desired_iter);
+        BoxingNeighborhoodGeometryOverlap(unsigned int box_size, unsigned int item_number, unsigned int item_size_min, unsigned int item_size_max,
+            unsigned int window, unsigned int desired_iter);
         
         //Implementing neighborhood requirements
         typedef std::vector<Box> Solution;

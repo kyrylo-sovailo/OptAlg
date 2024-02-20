@@ -43,14 +43,14 @@ opt::BoxingGreedy::Metric parse_metric(const char *s)
 
 std::string parse_method(const char *s)
 {
-    if (strcmp(s, "greedy") != 0 || strcmp(s, "neighborhood") != 0)
+    if (strcmp(s, "greedy") != 0 && strcmp(s, "neighborhood") != 0)
         throw std::runtime_error("Invalid method value");
     else return s;
 }
 
 std::string parse_heuristic(const char *s)
 {
-    if (strcmp(s, "geometry") != 0 || strcmp(s, "order") != 0 || strcmp(s, "geometry-overlap") != 0)
+    if (strcmp(s, "geometry") != 0 && strcmp(s, "order") != 0 && strcmp(s, "geometry-overlap") != 0)
         throw std::runtime_error("Invalid heuristic value");
     else return s;
 }
@@ -58,6 +58,7 @@ std::string parse_heuristic(const char *s)
 int _main(int argc, char **argv)
 {
     //General
+    std::string method = "greedy";
     bool verbose = false;
 
     //Neighborhood
@@ -69,33 +70,33 @@ int _main(int argc, char **argv)
     unsigned int item_number = 100;
     unsigned int item_size_min = 1;
     unsigned int item_size_max = 5;
-    std::string method = "greedy";
 
     //BoxingGreedy
     opt::BoxingGreedy::Metric metric = opt::BoxingGreedy::Metric::area;
 
     //BoxingNeighborhood
     std::string heuristic = "geometry";
+    unsigned int window = 3;
     unsigned int desired_iter = 1024;
 
     //Parse
-    int i = 1;
-    while (true)
+    for (int i = 1;;)
     {
         if (i == argc) break;
         else if (i == argc - 1) throw std::runtime_error("Argument missing value");
         const char *argument = argv[i];
         const char *value = argv[i + 1];
-        if (strcmp(argument, "--verbose") == 0) verbose = parse_bool(value);
+        if (strcmp(argument, "--method") == 0) method = parse_method(value);
+        else if (strcmp(argument, "--verbose") == 0) verbose = parse_bool(value);
         else if (strcmp(argument, "--iter_max") == 0) iter_max = parse_uint(value);
         else if (strcmp(argument, "--time_max") == 0) time_max = parse_double(value);
         else if (strcmp(argument, "--box_size") == 0) box_size = parse_uint(value);
         else if (strcmp(argument, "--item_number") == 0) item_number = parse_uint(value);
         else if (strcmp(argument, "--item_size_min") == 0) item_size_min = parse_uint(value);
         else if (strcmp(argument, "--item_size_max") == 0) item_size_max = parse_uint(value);
-        else if (strcmp(argument, "--method") == 0) method = parse_method(value);
         else if (strcmp(argument, "--metric") == 0) metric = parse_metric(value);
         else if (strcmp(argument, "--heuristic") == 0) heuristic = parse_heuristic(value);
+        else if (strcmp(argument, "--window") == 0) window = parse_uint(value);
         else if (strcmp(argument, "--desired_iter") == 0) desired_iter = parse_uint(value);
         else throw std::runtime_error("Invalid argument name");
         i += 2;
@@ -119,7 +120,7 @@ int _main(int argc, char **argv)
     else if (heuristic == "geometry")
     {
         typedef opt::BoxingNeighborhoodGeometry Problem;
-        Problem *problem = new Problem(box_size, item_number, item_size_min, item_size_max);
+        Problem *problem = new Problem(box_size, item_number, item_size_min, item_size_max, window);
         boxing.reset(problem);
         std::vector<Problem::Solution> log;
         Problem::Solution solution = opt::neighborhood(*problem, iter_max, time_max, &log, &timer);
@@ -129,7 +130,7 @@ int _main(int argc, char **argv)
     else if (heuristic == "order")
     {
         typedef opt::BoxingNeighborhoodOrder Problem;
-        Problem *problem = new Problem(box_size, item_number, item_size_min, item_size_max);
+        Problem *problem = new Problem(box_size, item_number, item_size_min, item_size_max, window);
         boxing.reset(problem);
         std::vector<Problem::Solution> log;
         Problem::Solution solution = opt::neighborhood(*problem, iter_max, time_max, &log, &timer);
@@ -139,7 +140,7 @@ int _main(int argc, char **argv)
     else
     {
         typedef opt::BoxingNeighborhoodGeometryOverlap Problem;
-        Problem *problem = new Problem(box_size, item_number, item_size_min, item_size_max, desired_iter);
+        Problem *problem = new Problem(box_size, item_number, item_size_min, item_size_max, window, desired_iter);
         boxing.reset(problem);
         std::vector<Problem::Solution> log;
         Problem::Solution solution = opt::neighborhood(*problem, iter_max, time_max, &log, &timer);

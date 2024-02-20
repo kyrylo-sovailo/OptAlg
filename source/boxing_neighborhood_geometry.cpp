@@ -2,8 +2,9 @@
 #include <random>
 #include <vector>
 
-opt::BoxingNeighborhoodGeometry::BoxingNeighborhoodGeometry(unsigned int box_size, unsigned int item_number, unsigned int item_size_min, unsigned int item_size_max)
-    : Boxing(box_size, item_number, item_size_min, item_size_max)
+opt::BoxingNeighborhoodGeometry::BoxingNeighborhoodGeometry(unsigned int box_size, unsigned int item_number, unsigned int item_size_min, unsigned int item_size_max,
+    unsigned int window)
+    : Boxing(box_size, item_number, item_size_min, item_size_max), _window(window)
 {}
 
 opt::BoxingNeighborhoodGeometry::Solution opt::BoxingNeighborhoodGeometry::initial()
@@ -37,15 +38,14 @@ opt::BoxingNeighborhoodGeometry::Solution opt::BoxingNeighborhoodGeometry::initi
 
 opt::BoxingNeighborhoodGeometry::SolutionContainer opt::BoxingNeighborhoodGeometry::neighbors(const Solution &solution) const
 {
-    const unsigned int window = 2;
-    BoxImage images[2 * window + 1];
+    std::vector<BoxImage> images(2 * _window + 1);
     std::vector<std::vector<Box>> neighborhood;
 
-    //Create cache 2 * window + 1; box_i++) 
-    for (unsigned int box_j = 0; box_j <= window && box_j < solution.size(); box_j++)
+    //Create cache 2 * _window + 1; box_i++) 
+    for (unsigned int box_j = 0; box_j <= _window && box_j < solution.size(); box_j++)
     {
-        images[window + box_j - 0] = _image_create();
-        _image_add_all(&images[window + box_j - 0], solution[box_j]);
+        images[_window + box_j - 0] = _image_create();
+        _image_add_all(&images[_window + box_j - 0], solution[box_j]);
     }
 
     //For every box
@@ -56,58 +56,68 @@ opt::BoxingNeighborhoodGeometry::SolutionContainer opt::BoxingNeighborhoodGeomet
         for (unsigned int rectangle_i = 0; rectangle_i < box.rectangles.size(); rectangle_i++)
         {
             const BoxedRectangle &rectangle = box.rectangles[rectangle_i];
-            _image_remove(&images[window], rectangle);
+            _image_remove(&images[_window], rectangle);
 
             //For every neighboring box
-            for (unsigned int box_j = std::max(box_i, window) - window;
-                box_j <= box_i + window && box_j < solution.size();
+            for (unsigned int box_j = std::max(box_i, _window) - _window;
+                box_j <= box_i + _window && box_j < solution.size();
                 box_j++)
             {
                 //For every neighboring y
                 BoxedRectangle move = rectangle;
-                for (move.y = std::max(rectangle.y, window) - window;
-                    move.y <= rectangle.y + window;
+                for (move.y = std::max(rectangle.y, _window) - _window;
+                    move.y <= rectangle.y + _window;
                     move.y++)
                 {
                     //For every neighboring x
-                    for (move.x = std::max(rectangle.x, window) - window;
-                        move.x <= rectangle.x + window;
+                    for (move.x = std::max(rectangle.x, _window) - _window;
+                        move.x <= rectangle.x + _window;
                         move.x++)
                     {
                         //Dismiss no-move
                         if (box_j == box_i && move.y == rectangle.y && move.x == rectangle.x) continue;
 
                         //Check no-transpose move
-                        if (_can_put_rectangle(move, images[window + box_j - box_i]))
+                        if (_can_put_rectangle(move, images[_window + box_j - box_i]))
                         {
                             neighborhood.push_back(solution);
-                            neighborhood.back()[box_i].rectangles[rectangle_i] = move;
+                            if (box_j != box_i)
+                            {
+                                neighborhood.back()[box_i].rectangles.erase(neighborhood.back()[box_i].rectangles.begin() + rectangle_i);
+                                neighborhood.back()[box_j].rectangles.push_back(move);
+                            }
+                            else neighborhood.back()[box_i].rectangles[rectangle_i] = move;
                         }
 
                         //Check transpose move
                         BoxedRectangle transpose_move(*move.rectangle, move.x, move.y, !move.transposed);
-                        if (_can_put_rectangle(transpose_move, images[window + box_j - box_i]))
+                        if (_can_put_rectangle(transpose_move, images[_window + box_j - box_i]))
                         {
                             //TODO: shift rectangle
                             neighborhood.push_back(solution);
-                            neighborhood.back()[box_i].rectangles[rectangle_i] = transpose_move;
+                            if (box_j != box_i)
+                            {
+                                neighborhood.back()[box_i].rectangles.erase(neighborhood.back()[box_i].rectangles.begin() + rectangle_i);
+                                neighborhood.back()[box_j].rectangles.push_back(transpose_move);
+                            }
+                            else neighborhood.back()[box_i].rectangles[rectangle_i] = transpose_move;
                         }
                     }
                 }
             }
 
-            _image_add(&images[window], rectangle);
+            _image_add(&images[_window], rectangle);
         }
 
         //Shift cache
-        for (unsigned int i = 0; i < 2 * window; i++)
+        for (unsigned int i = 0; i < 2 * _window; i++)
         {
             images[i] = std::move(images[i + 1]);
         }
-        if ((box_i + 1) + window < solution.size())
+        if ((box_i + 1) + _window < solution.size())
         {
-            images[2 * window] = _image_create();
-            _image_add_all(&images[2 * window], solution[(box_i + 1) + window]);
+            images[2 * _window] = _image_create();
+            _image_add_all(&images[2 * _window], solution[(box_i + 1) + _window]);
         }
     }
 
@@ -116,7 +126,10 @@ opt::BoxingNeighborhoodGeometry::SolutionContainer opt::BoxingNeighborhoodGeomet
     {
         for (unsigned int box_i = neighbor->size(); box_i > 0; box_i--)
         {
-            if ((*neighbor)[box_i - 1].rectangles.empty()) neighbor->erase(neighbor->begin() + box_i - 1);
+            if ((*neighbor)[box_i - 1].rectangles.empty())
+            {
+                neighbor->erase(neighbor->begin() + box_i - 1);
+            }
         }
     }
 
@@ -126,7 +139,7 @@ opt::BoxingNeighborhoodGeometry::SolutionContainer opt::BoxingNeighborhoodGeomet
 double opt::BoxingNeighborhoodGeometry::heuristic(const Solution &solution, unsigned int) const
 {
     if (solution.empty()) return 0.0;
-    else return solution.size() - static_cast<double>(least_occupied_space(solution)) / (_box_size * _box_size);
+    else return solution.size() - 1 + static_cast<double>(least_occupied_space(solution)) / (_box_size * _box_size);
 }
 
 bool opt::BoxingNeighborhoodGeometry::good(const Solution &) const
