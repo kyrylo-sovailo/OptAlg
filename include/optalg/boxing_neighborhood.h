@@ -1,5 +1,6 @@
 #pragma once
 #include "boxing.h"
+#include <random>
 #include <vector>
 
 namespace opt
@@ -11,14 +12,14 @@ namespace opt
         unsigned int _window;
     
     public:
-        BoxingNeighborhoodGeometry(unsigned int box_size, unsigned int item_number, unsigned int item_size_min, unsigned int item_size_max,
+        BoxingNeighborhoodGeometry(unsigned int box_size, unsigned int item_number, unsigned int item_size_min, unsigned int item_size_max, unsigned int seed,
             unsigned int window);
         
         //Implementing neighborhood requirements
         typedef std::vector<Box> Solution;
         typedef std::vector<Solution> SolutionContainer;
-        Solution initial();
-        SolutionContainer neighbors(const Solution &solution) const;
+        Solution initial(unsigned int seed) const;
+        SolutionContainer neighbors(const Solution &solution, std::default_random_engine &engine, unsigned int id = 0, unsigned int nthreads = 1) const;
         double heuristic(const Solution &solution, unsigned int iter) const;
         bool good(const Solution &solution) const;
 
@@ -33,14 +34,14 @@ namespace opt
         unsigned int _window;
     
     public:
-        BoxingNeighborhoodOrder(unsigned int box_size, unsigned int item_number, unsigned int item_size_min, unsigned int item_size_max,
+        BoxingNeighborhoodOrder(unsigned int box_size, unsigned int item_number, unsigned int item_size_min, unsigned int item_size_max, unsigned int seed,
             unsigned int window);
         
         //Implementing neighborhood requirements
         typedef std::vector<const Rectangle*> Solution;
         typedef std::vector<Solution> SolutionContainer;
-        Solution initial() const;
-        SolutionContainer neighbors(const Solution &solution);
+        Solution initial(unsigned int seed) const;
+        SolutionContainer neighbors(const Solution &solution, std::default_random_engine &engine, unsigned int id = 0, unsigned int nthreads = 1) const;
         double heuristic(const Solution &solution, unsigned int iter) const;
         bool good(const Solution &solution) const;
 
@@ -58,14 +59,14 @@ namespace opt
         unsigned int _overlapping_area(const BoxedRectangle &a, const BoxedRectangle &b) const;
     
     public:
-        BoxingNeighborhoodGeometryOverlap(unsigned int box_size, unsigned int item_number, unsigned int item_size_min, unsigned int item_size_max,
+        BoxingNeighborhoodGeometryOverlap(unsigned int box_size, unsigned int item_number, unsigned int item_size_min, unsigned int item_size_max, unsigned int seed,
             unsigned int window, unsigned int desired_iter);
         
         //Implementing neighborhood requirements
         typedef std::vector<Box> Solution;
         typedef std::vector<Solution> SolutionContainer;
-        Solution initial();
-        SolutionContainer neighbors(const Solution &solution) const;
+        Solution initial(unsigned int seed) const;
+        SolutionContainer neighbors(const Solution &solution, std::default_random_engine &engine, unsigned int id = 0, unsigned int nthreads = 1) const;
         double heuristic(const Solution &solution, unsigned int iter) const;
         bool good(const Solution &solution) const;
 

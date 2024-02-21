@@ -1,26 +1,32 @@
 #include "../include/optalg/boxing_neighborhood.h"
+#include <algorithm>
 #include <random>
 #include <vector>
 
 opt::BoxingNeighborhoodOrder::BoxingNeighborhoodOrder(unsigned int box_size, unsigned int item_number, unsigned int item_size_min, unsigned int item_size_max,
-    unsigned int window)
-    : Boxing(box_size, item_number, item_size_min, item_size_max), _window(window)
+    unsigned int seed, unsigned int window)
+    : Boxing(box_size, item_number, item_size_min, item_size_max, seed), _window(window)
 {
 }
 
-opt::BoxingNeighborhoodOrder::Solution opt::BoxingNeighborhoodOrder::initial() const
+opt::BoxingNeighborhoodOrder::Solution opt::BoxingNeighborhoodOrder::initial(unsigned int seed) const
 {
     std::vector<const Rectangle*> order(_rectangles.size());
     for (unsigned int i = 0; i < order.size(); i++) order[i] = &_rectangles[i];
+    std::default_random_engine engine(seed);
+    std::shuffle(order.begin(), order.end(), engine);
     return order;
 }
 
-opt::BoxingNeighborhoodOrder::SolutionContainer opt::BoxingNeighborhoodOrder::neighbors(const Solution &solution)
+opt::BoxingNeighborhoodOrder::SolutionContainer opt::BoxingNeighborhoodOrder::neighbors(const Solution &solution,
+    std::default_random_engine &engine, unsigned int id, unsigned int nthreads) const
 {
     std::vector<Solution> neighborhood;
 
     //Adding regular permutations
-    for (unsigned int rectangle_i = 0; rectangle_i < solution.size(); rectangle_i++)
+    const unsigned int begin_rectangle_i = solution.size() * id / nthreads;
+    const unsigned int end_rectangle_i = solution.size() * (id + 1) / nthreads;
+    for (unsigned int rectangle_i = begin_rectangle_i; rectangle_i < end_rectangle_i; rectangle_i++)
     {
         for (unsigned int new_rectangle_i = rectangle_i + 1; new_rectangle_i <= rectangle_i + _window && new_rectangle_i < solution.size(); new_rectangle_i++)
         {
@@ -48,14 +54,14 @@ opt::BoxingNeighborhoodOrder::SolutionContainer opt::BoxingNeighborhoodOrder::ne
     }
 
     std::uniform_int_distribution<unsigned int> distribution(0, solution.size());
-    for (unsigned int rectangle_i = 0; rectangle_i < solution.size(); rectangle_i++)
+    for (unsigned int rectangle_i = begin_rectangle_i; rectangle_i < end_rectangle_i; rectangle_i++)
     {
         const unsigned int box_i = rectangle_affinity[rectangle_i];
         const bool empty = boxes_empty[box_i];
         if (empty)
         {
             const Rectangle *rectangle = solution[rectangle_i];
-            const unsigned int new_rectangle_i = distribution(_engine);
+            const unsigned int new_rectangle_i = distribution(engine);
             neighborhood.push_back(solution);
             neighborhood.back().erase(neighborhood.back().begin() + rectangle_i);
             neighborhood.back().insert(neighborhood.back().begin() + new_rectangle_i, rectangle);
@@ -68,8 +74,9 @@ opt::BoxingNeighborhoodOrder::SolutionContainer opt::BoxingNeighborhoodOrder::ne
 double opt::BoxingNeighborhoodOrder::heuristic(const Solution &solution, unsigned int) const
 {
     std::vector<Box> boxes = get_boxes(solution);
-    if (boxes.empty()) return 0.0;
-    else return boxes.size() - 1 + static_cast<double>(least_occupied_space(boxes)) / (_box_size * _box_size);
+    return _energy(boxes);
+    //if (boxes.empty()) return 0.0;
+    //else return boxes.size() - 1 + static_cast<double>(least_occupied_space(boxes)) / (_box_size * _box_size);
 }
 
 bool opt::BoxingNeighborhoodOrder::good(const Solution &) const

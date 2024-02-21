@@ -140,13 +140,47 @@ unsigned int opt::Boxing::_put_rectangle(const Rectangle &rectangle, std::vector
     return boxes->size() - 1;
 }
 
-opt::Boxing::Boxing(unsigned int box_size, unsigned int item_number, unsigned int item_size_min, unsigned int item_size_max)
+unsigned int opt::Boxing::_least_occupied_space(const std::vector<Box> &boxes) const
+{
+    if (boxes.empty()) return 0;
+    unsigned int least_occupied = occupied_space(boxes.front());
+    for (auto box = boxes.cbegin() + 1; box != boxes.cend(); box++)
+    {
+        const unsigned int occupied = occupied_space(*box);
+        if (occupied < least_occupied) least_occupied = occupied;
+    }
+    return least_occupied;
+}
+
+double opt::Boxing::_energy(const std::vector<Box> &boxes) const
+{
+    const unsigned int cycle = 1;
+    double energy = 0;
+    for (unsigned int box_i = 0; box_i < boxes.size(); box_i++)
+    {
+        const Box &box = boxes[box_i];
+        for (auto rectangle = box.rectangles.cbegin(); rectangle != box.rectangles.cend(); rectangle++)
+        {
+            double height = box_i * _box_size;
+            if (box_i % cycle == 0) height += static_cast<double>(rectangle->y + rectangle->y_end()) / 2;
+            else if (box_i % cycle == 1) height += static_cast<double>(rectangle->x + rectangle->x_end()) / 2;
+            else if (box_i % cycle == 2) height += static_cast<double>(_box_size - rectangle->y - rectangle->y_end()) / 2;
+            else height += static_cast<double>(_box_size - rectangle->x - rectangle->x_end()) / 2;
+            energy += height * rectangle->rectangle->width * rectangle->rectangle->height;
+        }
+    }
+    return energy;
+}
+
+opt::Boxing::Boxing(unsigned int box_size, unsigned int item_number, unsigned int item_size_min, unsigned int item_size_max, unsigned int seed)
     : _box_size(box_size)
 {
     std::uniform_int_distribution<unsigned int> distribution(item_size_min, item_size_max);
+    std::default_random_engine engine(seed);
+    
     for (unsigned int i = 0; i < item_number; i++)
     {
-        _rectangles.push_back(Rectangle(distribution(_engine), distribution(_engine)));
+        _rectangles.push_back(Rectangle(distribution(engine), distribution(engine)));
     }
 }
 
@@ -163,16 +197,4 @@ unsigned int opt::Boxing::occupied_space(const Box &box) const
         occupied += (rectangle->rectangle->width * rectangle->rectangle->height);
     }
     return occupied;
-}
-
-unsigned int opt::Boxing::least_occupied_space(const std::vector<Box> &boxes) const
-{
-    if (boxes.empty()) return 0;
-    unsigned int least_occupied = occupied_space(boxes[0]);
-    for (auto box = boxes.cbegin() + 1; box != boxes.cend(); box++)
-    {
-        const unsigned int occupied = occupied_space(*box);
-        if (occupied < least_occupied) least_occupied = occupied;
-    }
-    return least_occupied;
 }

@@ -3,21 +3,22 @@
 #include <vector>
 
 opt::BoxingNeighborhoodGeometry::BoxingNeighborhoodGeometry(unsigned int box_size, unsigned int item_number, unsigned int item_size_min, unsigned int item_size_max,
-    unsigned int window)
-    : Boxing(box_size, item_number, item_size_min, item_size_max), _window(window)
+    unsigned int seed, unsigned int window)
+    : Boxing(box_size, item_number, item_size_min, item_size_max, seed), _window(window)
 {}
 
-opt::BoxingNeighborhoodGeometry::Solution opt::BoxingNeighborhoodGeometry::initial()
+opt::BoxingNeighborhoodGeometry::Solution opt::BoxingNeighborhoodGeometry::initial(unsigned int seed) const
 {
     std::vector<Box> boxes;
     BoxImage image = _image_create();
+    std::default_random_engine engine(seed);
 
     for (auto rectangle = _rectangles.cbegin(); rectangle != _rectangles.cend(); rectangle++)
     {
         //Randomly generate position
         std::uniform_int_distribution<unsigned int> x_distribution(0, _box_size - rectangle->width + 1);
         std::uniform_int_distribution<unsigned int> y_distribution(0, _box_size - rectangle->height + 1);
-        BoxedRectangle boxed_rectangle(*rectangle, x_distribution(_engine), y_distribution(_engine), false);
+        BoxedRectangle boxed_rectangle(*rectangle, x_distribution(engine), y_distribution(engine), false);
 
         //Try to fit in last box
         const bool fit = !boxes.empty() && _can_put_rectangle(boxed_rectangle, image);
@@ -36,20 +37,23 @@ opt::BoxingNeighborhoodGeometry::Solution opt::BoxingNeighborhoodGeometry::initi
     return boxes;
 }
 
-opt::BoxingNeighborhoodGeometry::SolutionContainer opt::BoxingNeighborhoodGeometry::neighbors(const Solution &solution) const
+opt::BoxingNeighborhoodGeometry::SolutionContainer opt::BoxingNeighborhoodGeometry::neighbors(const Solution &solution,
+    std::default_random_engine &, unsigned int id, unsigned int nthreads) const
 {
     std::vector<BoxImage> images(2 * _window + 1);
     std::vector<std::vector<Box>> neighborhood;
 
-    //Create cache 2 * _window + 1; box_i++) 
-    for (unsigned int box_j = 0; box_j <= _window && box_j < solution.size(); box_j++)
+    //Create cache
+    const unsigned int begin_box_i = solution.size() * id / nthreads;
+    const unsigned int end_box_i = solution.size() * (id + 1) / nthreads;
+    for (unsigned int box_j = std::max(begin_box_i, _window) - _window; box_j <= begin_box_i + _window && box_j < solution.size(); box_j++)
     {
-        images[_window + box_j - 0] = _image_create();
-        _image_add_all(&images[_window + box_j - 0], solution[box_j]);
+        images[_window + box_j - begin_box_i] = _image_create();
+        _image_add_all(&images[_window + box_j - begin_box_i], solution[box_j]);
     }
 
     //For every box
-    for (unsigned int box_i = 0; box_i < solution.size(); box_i++)
+    for (unsigned int box_i = begin_box_i; box_i < end_box_i; box_i++)
     {
         //For every rectangle
         const Box &box = solution[box_i];
@@ -137,8 +141,9 @@ opt::BoxingNeighborhoodGeometry::SolutionContainer opt::BoxingNeighborhoodGeomet
 
 double opt::BoxingNeighborhoodGeometry::heuristic(const Solution &solution, unsigned int) const
 {
-    if (solution.empty()) return 0.0;
-    else return solution.size() - 1 + static_cast<double>(least_occupied_space(solution)) / (_box_size * _box_size);
+    return _energy(solution);
+    //if (solution.empty()) return 0.0;
+    //else return solution.size() - 1 + static_cast<double>(_least_occupied_space(solution)) / (_box_size * _box_size);
 }
 
 bool opt::BoxingNeighborhoodGeometry::good(const Solution &) const

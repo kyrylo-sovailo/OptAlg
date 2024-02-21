@@ -1,6 +1,7 @@
 #pragma once
 #include <cmath>
 #include <limits>
+#include <random>
 #include <vector>
 #include <thread>
 #include <time.h>
@@ -15,7 +16,7 @@ namespace opt
      - Problem::SolutionContainer be a set of solutions
      
      - Solution Problem::initial() returns initial feasible solution
-     - SolutionContainer Problem::neighbors(Solution solution) returns solution neighbors
+     - SolutionContainer Problem::neighbors(Solution solution, int id, int threads) returns solution neighbors
      - double Problem::heuristic(Solution solution, unsigned int iter) returns solution heuristics
      - bool Problem::good(Solution solution) returns if solution is good enough and algorithm can terminate
     */
@@ -31,47 +32,49 @@ namespace opt
         typedef typename Problem::SolutionContainer Container;
         struct Thread
         {
-            typename Container::const_iterator begin, end;
-            const Solution *solution;
+            unsigned int id;
+            Solution solution;
             double heuristic;
             std::thread thread;
+            std::default_random_engine engine;
         };
         
-        //Start clock and threads
+        //Start threads
         const unsigned int nthreads = std::thread::hardware_concurrency();
         std::vector<Thread> threads(nthreads);
+        for (unsigned int id = 0; id < threads.size(); id++) threads[id].engine.seed(id);
+
+        //Start clock
         const bool clock_limited = std::isfinite(time_max);
         const clock_t clock_max = clock_limited ? static_cast<clock_t>(time_max * CLOCKS_PER_SEC) : 0;
         const clock_t start = clock();
         
         //Iterate
-        Solution solution = problem.initial();
+        Solution solution = problem.initial(0);
         if (log != nullptr) log->push_back(solution);
         for (unsigned int iter = 0;; iter++)
         {
             //Get heuristic
             double solution_heuristic = problem.heuristic(solution, iter);
                     
-            //Get neighborhood
-            Container neighbors = problem.neighbors(solution);
-            
-            //Search best neighbors
+            //Start threads
             for (unsigned int id = 0; id < threads.size(); id++)
             {
-                //TODO: generalize not only for random iterators
-                threads[id].begin = neighbors.begin() + (neighbors.size() * id / nthreads);
-                threads[id].end = neighbors.begin() + (neighbors.size() * (id + 1) / nthreads);
-                threads[id].solution = nullptr;
+                threads[id].id = id;
                 threads[id].heuristic = std::numeric_limits<double>::infinity();
                 threads[id].thread = std::thread(
-                [iter, solution_heuristic, &problem](Thread *thread)
+                [nthreads, iter, solution_heuristic, &solution, &problem](Thread *thread)
                 {
-                    for (auto neighbor = thread->begin; neighbor != thread->end; neighbor++)
+                    //Get neighborhood
+                    Container neighbors = problem.neighbors(solution, thread->engine, thread->id, nthreads);
+
+                    //Search for best neighbor
+                    for (auto neighbor = neighbors.begin(); neighbor != neighbors.end(); neighbor++)
                     {
                         double neighbor_heuristic = problem.heuristic(*neighbor, iter);
                         if (neighbor_heuristic < solution_heuristic && neighbor_heuristic < thread->heuristic)
                         {
-                            thread->solution = &(*neighbor);
+                            thread->solution = *neighbor;
                             thread->heuristic = neighbor_heuristic;
                         }
                     }
@@ -79,7 +82,7 @@ namespace opt
             }
 
             //Search best neighbor
-            const Solution *best_neighbor = nullptr;
+            Solution best_neighbor;
             double best_neighbor_heuristic = std::numeric_limits<double>::infinity();
             for (unsigned int id = 0; id < threads.size(); id++)
             {
@@ -92,16 +95,16 @@ namespace opt
             }
 
             //Go to best neighbor
-            if (best_neighbor != nullptr)
+            if (std::isfinite(best_neighbor_heuristic))
             {
-                solution = *best_neighbor;
+                solution = best_neighbor;
                 if (log != nullptr) log->push_back(solution);
             }
             
             //Exit
             if (problem.good(solution))
             {
-                if (best_neighbor == nullptr) break;                            //No better neighbor
+                if (!std::isfinite(best_neighbor_heuristic)) break;             //No better neighbor
                 else if (iter >= iter_max) break;                               //Maximum iteration reached
                 else if (clock_limited && clock() - start >= clock_max) break;  //Maximum time reached
             }

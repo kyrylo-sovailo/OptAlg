@@ -1,5 +1,5 @@
 #include "../include/optalg/boxing_neighborhood.h"
-#include <cmath>
+#include <random>
 
 unsigned int opt::BoxingNeighborhoodGeometryOverlap::_overlapping_area(const BoxedRectangle &a, const BoxedRectangle &b) const
 {
@@ -12,20 +12,21 @@ unsigned int opt::BoxingNeighborhoodGeometryOverlap::_overlapping_area(const Box
 }
 
 opt::BoxingNeighborhoodGeometryOverlap::BoxingNeighborhoodGeometryOverlap(unsigned int box_size, unsigned int item_number, unsigned int item_size_min, unsigned int item_size_max,
-    unsigned int window, unsigned int desired_iter)
-    : Boxing(box_size, item_number, item_size_min, item_size_max), _window(window), _desired_iter(desired_iter)
+    unsigned int seed, unsigned int window, unsigned int desired_iter)
+    : Boxing(box_size, item_number, item_size_min, item_size_max, seed), _window(window), _desired_iter(desired_iter)
 {}
 
-opt::BoxingNeighborhoodGeometryOverlap::Solution opt::BoxingNeighborhoodGeometryOverlap::initial()
+opt::BoxingNeighborhoodGeometryOverlap::Solution opt::BoxingNeighborhoodGeometryOverlap::initial(unsigned int seed) const
 {
     std::vector<Box> boxes(1);
+    std::default_random_engine engine(seed);
 
     for (auto rectangle = _rectangles.cbegin(); rectangle != _rectangles.cend(); rectangle++)
     {
         //Randomly generate position
         std::uniform_int_distribution<unsigned int> x_distribution(0, _box_size - rectangle->width + 1);
         std::uniform_int_distribution<unsigned int> y_distribution(0, _box_size - rectangle->height + 1);
-        BoxedRectangle boxed_rectangle(*rectangle, x_distribution(_engine), y_distribution(_engine), false);
+        BoxedRectangle boxed_rectangle(*rectangle, x_distribution(engine), y_distribution(engine), false);
 
         //Put in box
         boxes[0].rectangles.push_back(boxed_rectangle);
@@ -33,12 +34,15 @@ opt::BoxingNeighborhoodGeometryOverlap::Solution opt::BoxingNeighborhoodGeometry
     return boxes;
 }
 
-opt::BoxingNeighborhoodGeometryOverlap::SolutionContainer opt::BoxingNeighborhoodGeometryOverlap::neighbors(const Solution &solution) const
+opt::BoxingNeighborhoodGeometryOverlap::SolutionContainer opt::BoxingNeighborhoodGeometryOverlap::neighbors(const Solution &solution,
+    std::default_random_engine &, unsigned int id, unsigned int nthreads) const
 {
     std::vector<std::vector<Box>> neighborhood;
 
     //For every box
-    for (unsigned int box_i = 0; box_i < solution.size(); box_i++)
+    const unsigned int begin_box_i = solution.size() * id / nthreads;
+    const unsigned int end_box_i = solution.size() * (id + 1) / nthreads;
+    for (unsigned int box_i = begin_box_i; box_i < end_box_i; box_i++)
     {
         //For every rectangle
         const Box &box = solution[box_i];
@@ -137,8 +141,9 @@ double opt::BoxingNeighborhoodGeometryOverlap::heuristic(const Solution &solutio
         }
     }
 
-    if (solution.empty()) return 0.0;
-    else return solution.size() - 1 + static_cast<double>(least_occupied_space(solution)) / (_box_size * _box_size) + penalty;
+    //if (solution.empty()) return 0.0;
+    //else return solution.size() - 1 + static_cast<double>(least_occupied_space(solution)) / (_box_size * _box_size) + penalty;
+    return _energy(solution) + penalty;
 }
 
 bool opt::BoxingNeighborhoodGeometryOverlap::good(const Solution &solution) const

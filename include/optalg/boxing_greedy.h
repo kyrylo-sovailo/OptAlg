@@ -20,7 +20,7 @@ namespace opt
         Metric _metric;
 
     public:
-        BoxingGreedy(unsigned int box_size, unsigned int item_number, unsigned int item_size_min, unsigned int item_size_max, Metric metric);
+        BoxingGreedy(unsigned int box_size, unsigned int item_number, unsigned int item_size_min, unsigned int item_size_max, unsigned int seed, Metric metric);
 
         //Implementing greedy requirements
         typedef Rectangle Element;

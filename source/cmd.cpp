@@ -70,6 +70,7 @@ int _main(int argc, char **argv)
     unsigned int item_number = 100;
     unsigned int item_size_min = 1;
     unsigned int item_size_max = 5;
+    unsigned int seed = 0;
 
     //BoxingGreedy
     opt::BoxingGreedy::Metric metric = opt::BoxingGreedy::Metric::area;
@@ -94,6 +95,7 @@ int _main(int argc, char **argv)
         else if (strcmp(argument, "--item_number") == 0) item_number = parse_uint(value);
         else if (strcmp(argument, "--item_size_min") == 0) item_size_min = parse_uint(value);
         else if (strcmp(argument, "--item_size_max") == 0) item_size_max = parse_uint(value);
+        else if (strcmp(argument, "--seed") == 0) seed = parse_uint(value);
         else if (strcmp(argument, "--metric") == 0) metric = parse_metric(value);
         else if (strcmp(argument, "--heuristic") == 0) heuristic = parse_heuristic(value);
         else if (strcmp(argument, "--window") == 0) window = parse_uint(value);
@@ -110,7 +112,7 @@ int _main(int argc, char **argv)
     if (method == "greedy")
     {
         typedef opt::BoxingGreedy Problem;
-        Problem *problem = new Problem(box_size, item_number, item_size_min, item_size_max, metric);
+        Problem *problem = new Problem(box_size, item_number, item_size_min, item_size_max, seed, metric);
         boxing.reset(problem);
         std::vector<Problem::Solution> log;
         Problem::Solution solution = opt::greedy(*problem, &log, &timer);
@@ -120,7 +122,7 @@ int _main(int argc, char **argv)
     else if (heuristic == "geometry")
     {
         typedef opt::BoxingNeighborhoodGeometry Problem;
-        Problem *problem = new Problem(box_size, item_number, item_size_min, item_size_max, window);
+        Problem *problem = new Problem(box_size, item_number, item_size_min, item_size_max, seed, window);
         boxing.reset(problem);
         std::vector<Problem::Solution> log;
         Problem::Solution solution = opt::neighborhood(*problem, iter_max, time_max, &log, &timer);
@@ -130,7 +132,7 @@ int _main(int argc, char **argv)
     else if (heuristic == "order")
     {
         typedef opt::BoxingNeighborhoodOrder Problem;
-        Problem *problem = new Problem(box_size, item_number, item_size_min, item_size_max, window);
+        Problem *problem = new Problem(box_size, item_number, item_size_min, item_size_max, seed, window);
         boxing.reset(problem);
         std::vector<Problem::Solution> log;
         Problem::Solution solution = opt::neighborhood(*problem, iter_max, time_max, &log, &timer);
@@ -140,7 +142,7 @@ int _main(int argc, char **argv)
     else
     {
         typedef opt::BoxingNeighborhoodGeometryOverlap Problem;
-        Problem *problem = new Problem(box_size, item_number, item_size_min, item_size_max, window, desired_iter);
+        Problem *problem = new Problem(box_size, item_number, item_size_min, item_size_max, window, seed, desired_iter);
         boxing.reset(problem);
         std::vector<Problem::Solution> log;
         Problem::Solution solution = opt::neighborhood(*problem, iter_max, time_max, &log, &timer);
@@ -149,12 +151,12 @@ int _main(int argc, char **argv)
     }
 
     //Print
-    std::cout << "Solved in " << std::setprecision(1) << timer << " seconds and " << iteration_count << " iterations" << std::endl;
+    std::cout << "Solved in " << std::setprecision(5) << timer << " seconds and " << iteration_count << " iterations" << std::endl;
     std::cout << "Solution:" << std::endl;
     for (unsigned int i = 0; i < boxes.size(); i++)
     {
         const double percentage = static_cast<double>(boxing->occupied_space(boxes[i])) / (boxing->box_size() * boxing->box_size());
-        std::cout << "Box " << i << ": occupied " << std::setprecision(4) << 100 * percentage << "%" << std::endl;
+        std::cout << "Box " << i << ": occupied " << std::setprecision(5) << 100 * percentage << "%" << std::endl;
         if (verbose) for (unsigned int j = 0; j < boxes[i].rectangles.size(); j++)
         {
             const opt::Boxing::BoxedRectangle &r = boxes[i].rectangles[j];

@@ -1,7 +1,8 @@
 #include "../include/optalg/boxing_greedy.h"
 
-opt::BoxingGreedy::BoxingGreedy(unsigned int box_size, unsigned int item_number, unsigned int item_size_min, unsigned int item_size_max, Metric metric)
-    : Boxing(box_size, item_number, item_size_min, item_size_max), _metric(metric)
+opt::BoxingGreedy::BoxingGreedy(unsigned int box_size, unsigned int item_number, unsigned int item_size_min, unsigned int item_size_max, unsigned int seed,
+    Metric metric)
+    : Boxing(box_size, item_number, item_size_min, item_size_max, seed), _metric(metric)
 {
 }
     
