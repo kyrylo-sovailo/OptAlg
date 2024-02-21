@@ -45,6 +45,7 @@ namespace opt
         void _image_clear(BoxImage *image) const;
 
         //Putting rectangles in boxes
+        std::pair<bool, BoxedRectangle> _can_transpose_center(const BoxedRectangle &rectangle) const;
         bool _can_put_rectangle(const BoxedRectangle &rectangle) const;
         bool _can_put_rectangle(const BoxedRectangle &rectangle, const BoxImage &image) const;
         std::pair<bool, BoxedRectangle> _can_put_rectangle(const Rectangle &rectangle, const BoxImage &image) const;

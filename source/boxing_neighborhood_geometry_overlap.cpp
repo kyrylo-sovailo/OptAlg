@@ -1,4 +1,5 @@
 #include "../include/optalg/boxing_neighborhood.h"
+#include <cmath>
 
 unsigned int opt::BoxingNeighborhoodGeometryOverlap::_overlapping_area(const BoxedRectangle &a, const BoxedRectangle &b) const
 {
@@ -47,7 +48,7 @@ opt::BoxingNeighborhoodGeometryOverlap::SolutionContainer opt::BoxingNeighborhoo
 
             //For every neighboring box
             for (unsigned int box_j = std::max(box_i, _window) - _window;
-                box_j <= box_i + _window && box_j < solution.size();
+                box_j <= box_i + _window && box_j < solution.size() + 1;
                 box_j++)
             {
                 //For every neighboring y
@@ -64,32 +65,46 @@ opt::BoxingNeighborhoodGeometryOverlap::SolutionContainer opt::BoxingNeighborhoo
                         //Dismiss no-move
                         if (box_j == box_i && move.y == rectangle.y && move.x == rectangle.x) continue;
 
-                        //Check no-transpose move
+                        //Check non-transposed move
                         if (_can_put_rectangle(move))
                         {
                             neighborhood.push_back(solution);
                             if (box_j != box_i)
                             {
+                                if (box_j == neighborhood.back().size()) neighborhood.back().push_back(Box());
                                 neighborhood.back()[box_i].rectangles.erase(neighborhood.back()[box_i].rectangles.begin() + rectangle_i);
                                 neighborhood.back()[box_j].rectangles.push_back(move);
                             }
                             else neighborhood.back()[box_i].rectangles[rectangle_i] = move;
                         }
 
-                        //Check transpose move
-                        BoxedRectangle transpose_move(*move.rectangle, move.x, move.y, !move.transposed);
-                        if (_can_put_rectangle(transpose_move))
+                        //Check transposed move
+                        std::pair<bool, BoxedRectangle> transposed_move = _can_transpose_center(move);
+                        if (transposed_move.first && _can_put_rectangle(transposed_move.second))
                         {
                             neighborhood.push_back(solution);
                             if (box_j != box_i)
                             {
+                                if (box_j == neighborhood.back().size()) neighborhood.back().push_back(Box());
                                 neighborhood.back()[box_i].rectangles.erase(neighborhood.back()[box_i].rectangles.begin() + rectangle_i);
-                                neighborhood.back()[box_j].rectangles.push_back(transpose_move);
+                                neighborhood.back()[box_j].rectangles.push_back(transposed_move.second);
                             }
-                            else neighborhood.back()[box_i].rectangles[rectangle_i] = transpose_move;
+                            else neighborhood.back()[box_i].rectangles[rectangle_i] = transposed_move.second;
                         }
                     }
                 }
+            }
+        }
+    }
+
+    //Remove empty boxes
+    for (auto neighbor = neighborhood.begin(); neighbor != neighborhood.end(); neighbor++)
+    {
+        for (unsigned int box_i = neighbor->size(); box_i > 0; box_i--)
+        {
+            if ((*neighbor)[box_i - 1].rectangles.empty())
+            {
+                neighbor->erase(neighbor->begin() + box_i - 1);
             }
         }
     }
@@ -100,7 +115,7 @@ opt::BoxingNeighborhoodGeometryOverlap::SolutionContainer opt::BoxingNeighborhoo
 double opt::BoxingNeighborhoodGeometryOverlap::heuristic(const Solution &solution, unsigned int iter) const
 {
     const double allowed_percentage = (iter < _desired_iter) ? (static_cast<double>(_desired_iter - iter) / _desired_iter) : 0.0;
-    const double area_penalty = 1.0;
+    double percentage_penalty = 1000 * 1000;
 
     //For every box
     double penalty = 0.0;
@@ -117,7 +132,7 @@ double opt::BoxingNeighborhoodGeometryOverlap::heuristic(const Solution &solutio
                 const unsigned int next_area = next_rectangle->rectangle->width * next_rectangle->rectangle->height;
                 const unsigned int overlap_area = _overlapping_area(*rectangle, *next_rectangle);
                 const double percentage = static_cast<double>(overlap_area) / std::max(rectangle_area, next_area);
-                if (percentage > allowed_percentage) penalty += area_penalty * (percentage - allowed_percentage);
+                if (percentage > allowed_percentage) penalty += percentage_penalty * (percentage - allowed_percentage);
             }
         }
     }
@@ -128,17 +143,39 @@ double opt::BoxingNeighborhoodGeometryOverlap::heuristic(const Solution &solutio
 
 bool opt::BoxingNeighborhoodGeometryOverlap::good(const Solution &solution) const
 {
-    BoxImage image;
-    for (auto box = solution.cbegin(); box != solution.cend(); box++)
+    const bool count_overlaps = true;
+    if (count_overlaps)
     {
-        if (image.empty()) image = _image_create(); else _image_clear(&image);
-        for (auto rectangle = box->rectangles.cbegin(); rectangle != box->rectangles.cend(); rectangle++)
+        unsigned int overlaps = 0;
+        //For every box
+        for (auto box = solution.cbegin(); box != solution.cend(); box++)
         {
-            if (!_can_put_rectangle(*rectangle, image)) return false;
-            _image_add(&image, *rectangle);
+            //For every rectangle
+            for (auto rectangle = box->rectangles.cbegin(); rectangle != box->rectangles.cend(); rectangle++)
+            {
+                //For every next rectangle
+                for (auto next_rectangle = rectangle + 1; next_rectangle != box->rectangles.cend(); next_rectangle++)
+                {
+                    overlaps += _overlapping_area(*rectangle, *next_rectangle);
+                }
+            }
         }
+        return overlaps == 0;
     }
-    return true;
+    else
+    {
+        BoxImage image;
+        for (auto box = solution.cbegin(); box != solution.cend(); box++)
+        {
+            if (image.empty()) image = _image_create(); else _image_clear(&image);
+            for (auto rectangle = box->rectangles.cbegin(); rectangle != box->rectangles.cend(); rectangle++)
+            {
+                if (!_can_put_rectangle(*rectangle, image)) return false;
+                _image_add(&image, *rectangle);
+            }
+        }
+        return true;
+    }
 }
 
 std::vector<opt::Boxing::Box> opt::BoxingNeighborhoodGeometryOverlap::get_boxes(const Solution &solution) const

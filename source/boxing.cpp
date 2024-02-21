@@ -55,6 +55,21 @@ void opt::Boxing::_image_clear(BoxImage *image) const
     image->assign(_box_size * _box_size, false);
 }
 
+std::pair<bool, opt::Boxing::BoxedRectangle> opt::Boxing::_can_transpose_center(const BoxedRectangle &rectangle) const
+{
+    const unsigned int width = rectangle.transposed ? rectangle.rectangle->height : rectangle.rectangle->width;
+    const unsigned int height = rectangle.transposed ? rectangle.rectangle->width : rectangle.rectangle->height;
+    if (rectangle.x + width / 2 >= height / 2 && rectangle.y + height / 2 >= width / 2)
+    {
+        BoxedRectangle transposed(*rectangle.rectangle,
+        rectangle.x + width / 2 - height / 2,
+        rectangle.y + height / 2 - width / 2,
+        !rectangle.transposed);
+        return { true, transposed};
+    }
+    else return { false, rectangle };
+}
+
 bool opt::Boxing::_can_put_rectangle(const BoxedRectangle &rectangle) const
 {
     return rectangle.x_end() <= _box_size && rectangle.y_end() <= _box_size;

@@ -77,7 +77,7 @@ opt::BoxingNeighborhoodGeometry::SolutionContainer opt::BoxingNeighborhoodGeomet
                         //Dismiss no-move
                         if (box_j == box_i && move.y == rectangle.y && move.x == rectangle.x) continue;
 
-                        //Check no-transpose move
+                        //Check non-transposed move
                         if (_can_put_rectangle(move, images[_window + box_j - box_i]))
                         {
                             neighborhood.push_back(solution);
@@ -89,18 +89,17 @@ opt::BoxingNeighborhoodGeometry::SolutionContainer opt::BoxingNeighborhoodGeomet
                             else neighborhood.back()[box_i].rectangles[rectangle_i] = move;
                         }
 
-                        //Check transpose move
-                        BoxedRectangle transpose_move(*move.rectangle, move.x, move.y, !move.transposed);
-                        if (_can_put_rectangle(transpose_move, images[_window + box_j - box_i]))
+                        //Check transposed move
+                        std::pair<bool, BoxedRectangle> transposed_move = _can_transpose_center(move);
+                        if (transposed_move.first && _can_put_rectangle(transposed_move.second, images[_window + box_j - box_i]))
                         {
-                            //TODO: shift rectangle
                             neighborhood.push_back(solution);
                             if (box_j != box_i)
                             {
                                 neighborhood.back()[box_i].rectangles.erase(neighborhood.back()[box_i].rectangles.begin() + rectangle_i);
-                                neighborhood.back()[box_j].rectangles.push_back(transpose_move);
+                                neighborhood.back()[box_j].rectangles.push_back(transposed_move.second);
                             }
-                            else neighborhood.back()[box_i].rectangles[rectangle_i] = transpose_move;
+                            else neighborhood.back()[box_i].rectangles[rectangle_i] = transposed_move.second;
                         }
                     }
                 }
