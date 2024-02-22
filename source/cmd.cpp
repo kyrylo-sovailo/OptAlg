@@ -79,7 +79,7 @@ int _main(int argc, char **argv)
     std::string neighborhood = "geometry";
     unsigned int window = 1;
     unsigned int hwindow = 0;
-    unsigned int desired_iter = 1024;
+    unsigned int desired_iter = 100;
 
     //Parse
     for (int i = 1;;)

@@ -10,3 +10,10 @@ source/boxing_neighborhood_geometry_overlap.cpp)
 
 add_executable(optalg_cmd source/cmd.cpp)
 target_link_libraries(optalg_cmd PUBLIC optalg)
+
+find_package(wxWidgets REQUIRED COMPONENTS core base)
+if(wxWidgets_USE_FILE)
+    include(${wxWidgets_USE_FILE})
+endif()
+add_executable(optalg_gui source/gui.cpp)
+target_link_libraries(optalg_gui ${wxWidgets_LIBRARIES})
