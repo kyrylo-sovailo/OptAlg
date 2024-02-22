@@ -9,11 +9,11 @@ namespace opt
     class BoxingNeighborhoodGeometry : public Boxing
     {
     protected:
-        unsigned int _window;
+        unsigned int _window, _hwindow;
     
     public:
         BoxingNeighborhoodGeometry(unsigned int box_size, unsigned int item_number, unsigned int item_size_min, unsigned int item_size_max, unsigned int seed,
-            unsigned int window);
+            unsigned int window, unsigned int hwindow);
         
         //Implementing neighborhood requirements
         typedef std::vector<Box> Solution;
@@ -53,14 +53,12 @@ namespace opt
     class BoxingNeighborhoodGeometryOverlap : public Boxing
     {
     protected:
-        unsigned int _window;
+        unsigned int _window, _hwindow;
         unsigned int _desired_iter;
-
-        unsigned int _overlapping_area(const BoxedRectangle &a, const BoxedRectangle &b) const;
     
     public:
         BoxingNeighborhoodGeometryOverlap(unsigned int box_size, unsigned int item_number, unsigned int item_size_min, unsigned int item_size_max, unsigned int seed,
-            unsigned int window, unsigned int desired_iter);
+            unsigned int window, unsigned int hwindow, unsigned int desired_iter);
         
         //Implementing neighborhood requirements
         typedef std::vector<Box> Solution;

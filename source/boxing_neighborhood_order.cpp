@@ -49,7 +49,7 @@ opt::BoxingNeighborhoodOrder::SolutionContainer opt::BoxingNeighborhoodOrder::ne
     std::vector<bool> boxes_empty(boxes.size());
     for (unsigned int box_i = 0; box_i < boxes.size(); box_i++)
     {
-        const double percentage = static_cast<double>(occupied_space(boxes[box_i].first)) / (_box_size * _box_size - 1);
+        const double percentage = static_cast<double>(occupied_area(boxes[box_i].first)) / (_box_size * _box_size - 1);
         boxes_empty[box_i] = percentage <= empty_threshold;
     }
 
@@ -74,9 +74,7 @@ opt::BoxingNeighborhoodOrder::SolutionContainer opt::BoxingNeighborhoodOrder::ne
 double opt::BoxingNeighborhoodOrder::heuristic(const Solution &solution, unsigned int) const
 {
     std::vector<Box> boxes = get_boxes(solution);
-    return _energy(boxes);
-    //if (boxes.empty()) return 0.0;
-    //else return boxes.size() - 1 + static_cast<double>(least_occupied_space(boxes)) / (_box_size * _box_size);
+    return energy(boxes);
 }
 
 bool opt::BoxingNeighborhoodOrder::good(const Solution &) const

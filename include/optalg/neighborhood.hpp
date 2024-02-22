@@ -3,8 +3,10 @@
 #include <limits>
 #include <random>
 #include <vector>
-#include <thread>
 #include <time.h>
+#ifdef NDEBUG
+    #include <thread>
+#endif
 
 namespace opt
 {
@@ -35,12 +37,18 @@ namespace opt
             unsigned int id;
             Solution solution;
             double heuristic;
-            std::thread thread;
             std::default_random_engine engine;
+            #ifdef NDEBUG
+                std::thread thread;
+            #endif
         };
         
         //Start threads
-        const unsigned int nthreads = std::thread::hardware_concurrency();
+        #ifdef NDEBUG
+            const unsigned int nthreads = std::thread::hardware_concurrency();
+        #else
+            const unsigned int nthreads = 1;
+        #endif
         std::vector<Thread> threads(nthreads);
         for (unsigned int id = 0; id < threads.size(); id++) threads[id].engine.seed(id);
 
@@ -62,8 +70,12 @@ namespace opt
             {
                 threads[id].id = id;
                 threads[id].heuristic = std::numeric_limits<double>::infinity();
+                #ifdef NDEBUG
                 threads[id].thread = std::thread(
                 [nthreads, iter, solution_heuristic, &solution, &problem](Thread *thread)
+                #else
+                Thread *thread = &threads[0];
+                #endif
                 {
                     //Get neighborhood
                     Container neighbors = problem.neighbors(solution, thread->engine, thread->id, nthreads);
@@ -78,7 +90,10 @@ namespace opt
                             thread->heuristic = neighbor_heuristic;
                         }
                     }
-                }, &threads[id]);
+                }
+                #ifdef NDEBUG
+                , &threads[id]);
+                #endif
             }
 
             //Search best neighbor
@@ -86,7 +101,9 @@ namespace opt
             double best_neighbor_heuristic = std::numeric_limits<double>::infinity();
             for (unsigned int id = 0; id < threads.size(); id++)
             {
-                threads[id].thread.join();
+                #ifdef NDEBUG
+                    threads[id].thread.join();
+                #endif
                 if (threads[id].heuristic < solution_heuristic && threads[id].heuristic < best_neighbor_heuristic)
                 {
                     best_neighbor = threads[id].solution;

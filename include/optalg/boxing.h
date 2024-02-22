@@ -49,13 +49,20 @@ namespace opt
         std::pair<bool, BoxedRectangle> _can_put_rectangle(const Rectangle &rectangle, const BoxImage &image) const;
         unsigned int _put_rectangle(const Rectangle &rectangle, std::vector<std::pair<Box, BoxImage>> *boxes) const;
 
-        //Heuristic helpers
-        unsigned int _least_occupied_space(const std::vector<Box> &boxes) const;
-        double _energy(const std::vector<Box> &boxes) const;
-
     public:
         Boxing(unsigned int box_size, unsigned int item_number, unsigned int item_size_min, unsigned int item_size_max, unsigned int seed);
         unsigned int box_size() const;
-        unsigned int occupied_space(const Box &box) const;
+        unsigned int box_area() const;
+
+        //Heuristic helpers
+        double energy(const std::vector<Box> &boxes, unsigned int cycle = 1) const;
+        bool has_overlaps(const std::vector<Box> &boxes) const;
+        unsigned int overlap_area(const BoxedRectangle &a, const BoxedRectangle &b) const;
+        unsigned int overlap_area(const std::vector<Box> &boxes) const;
+        unsigned int occupied_area(const Box &box) const;
+        unsigned int occupied_area(const std::vector<Box> &boxes, double max_occupation = 1.0) const;
+        unsigned int least_occupied_area(const std::vector<Box> &boxes) const;
+        unsigned int rectangle_number(const std::vector<Box> &boxes, double max_occupation = 1.0) const;
+        unsigned int least_rectangle_number(const std::vector<Box> &boxes, double max_occupation = 1.0) const;
     };
 }

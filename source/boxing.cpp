@@ -117,6 +117,16 @@ std::pair<bool, opt::Boxing::BoxedRectangle> opt::Boxing::_can_put_rectangle(con
     return { false, boxed_rectangle };
 }
 
+unsigned int opt::Boxing::box_size() const
+{
+    return _box_size;
+}
+
+unsigned int opt::Boxing::box_area() const
+{
+    return _box_size * _box_size;
+}
+
 unsigned int opt::Boxing::_put_rectangle(const Rectangle &rectangle, std::vector<std::pair<Box, BoxImage>> *boxes) const
 {
     //Try to fit in existing boxes
@@ -140,21 +150,20 @@ unsigned int opt::Boxing::_put_rectangle(const Rectangle &rectangle, std::vector
     return boxes->size() - 1;
 }
 
-unsigned int opt::Boxing::_least_occupied_space(const std::vector<Box> &boxes) const
+opt::Boxing::Boxing(unsigned int box_size, unsigned int item_number, unsigned int item_size_min, unsigned int item_size_max, unsigned int seed)
+    : _box_size(box_size)
 {
-    if (boxes.empty()) return 0;
-    unsigned int least_occupied = occupied_space(boxes.front());
-    for (auto box = boxes.cbegin() + 1; box != boxes.cend(); box++)
+    std::uniform_int_distribution<unsigned int> distribution(item_size_min, item_size_max);
+    std::default_random_engine engine(seed);
+
+    for (unsigned int i = 0; i < item_number; i++)
     {
-        const unsigned int occupied = occupied_space(*box);
-        if (occupied < least_occupied) least_occupied = occupied;
+        _rectangles.push_back(Rectangle(distribution(engine), distribution(engine)));
     }
-    return least_occupied;
 }
 
-double opt::Boxing::_energy(const std::vector<Box> &boxes) const
+double opt::Boxing::energy(const std::vector<Box> &boxes, unsigned int cycle) const
 {
-    const unsigned int cycle = 1;
     double energy = 0;
     for (unsigned int box_i = 0; box_i < boxes.size(); box_i++)
     {
@@ -172,24 +181,52 @@ double opt::Boxing::_energy(const std::vector<Box> &boxes) const
     return energy;
 }
 
-opt::Boxing::Boxing(unsigned int box_size, unsigned int item_number, unsigned int item_size_min, unsigned int item_size_max, unsigned int seed)
-    : _box_size(box_size)
+bool opt::Boxing::has_overlaps(const std::vector<Box> &boxes) const
 {
-    std::uniform_int_distribution<unsigned int> distribution(item_size_min, item_size_max);
-    std::default_random_engine engine(seed);
-    
-    for (unsigned int i = 0; i < item_number; i++)
+    BoxImage image;
+    for (auto box = boxes.cbegin(); box != boxes.cend(); box++)
     {
-        _rectangles.push_back(Rectangle(distribution(engine), distribution(engine)));
+        if (image.empty()) image = _image_create(); else _image_clear(&image);
+        for (auto rectangle = box->rectangles.cbegin(); rectangle != box->rectangles.cend(); rectangle++)
+        {
+            if (!_can_put_rectangle(*rectangle, image)) return false;
+            _image_add(&image, *rectangle);
+        }
     }
+    return true;
 }
 
-unsigned int opt::Boxing::box_size() const
+unsigned int opt::Boxing::overlap_area(const BoxedRectangle &a, const BoxedRectangle &b) const
 {
-    return _box_size;
+    const unsigned int begin_x = std::max(a.x, b.x);
+    const unsigned int begin_y = std::max(a.y, b.y);
+    const unsigned int end_x = std::min(a.x_end(), b.x_end());
+    const unsigned int end_y = std::min(a.y_end(), b.y_end());
+    if (begin_x < end_x && begin_y < end_y) return (end_x - begin_x) * (end_y - begin_y);
+    else return 0;
 }
 
-unsigned int opt::Boxing::occupied_space(const Box &box) const
+unsigned int opt::Boxing::overlap_area(const std::vector<Box> &boxes) const
+{
+    unsigned int overlaps = 0;
+
+    //For every box
+    for (auto box = boxes.cbegin(); box != boxes.cend(); box++)
+    {
+        //For every rectangle
+        for (auto rectangle = box->rectangles.cbegin(); rectangle != box->rectangles.cend(); rectangle++)
+        {
+            //For every next rectangle
+            for (auto next_rectangle = rectangle + 1; next_rectangle != box->rectangles.cend(); next_rectangle++)
+            {
+                overlaps += overlap_area(*rectangle, *next_rectangle);
+            }
+        }
+    }
+    return overlaps;
+}
+
+unsigned int opt::Boxing::occupied_area(const Box &box) const
 {
     unsigned int occupied = 0;
     for (auto rectangle = box.rectangles.cbegin(); rectangle != box.rectangles.cend(); rectangle++)
@@ -197,4 +234,49 @@ unsigned int opt::Boxing::occupied_space(const Box &box) const
         occupied += (rectangle->rectangle->width * rectangle->rectangle->height);
     }
     return occupied;
+}
+
+unsigned int opt::Boxing::occupied_area(const std::vector<Box> &boxes, double max_occupation) const
+{
+    unsigned int occupied = 0;
+    for (auto box = boxes.cbegin(); box != boxes.cend(); box++)
+    {
+        const double occupation = static_cast<double>(occupied_area(*box)) / box_area();
+        if (occupation <= max_occupation) occupied += occupied_area(*box);
+    }
+    return occupied;
+}
+
+unsigned int opt::Boxing::least_occupied_area(const std::vector<Box> &boxes) const
+{
+    if (boxes.empty()) return 0;
+    unsigned int least_occupied = occupied_area(boxes.front());
+    for (auto box = boxes.cbegin() + 1; box != boxes.cend(); box++)
+    {
+        least_occupied = std::min(least_occupied, occupied_area(*box));
+    }
+    return least_occupied;
+}
+
+unsigned int opt::Boxing::rectangle_number(const std::vector<Box> &boxes, double max_occupation) const
+{
+    unsigned int number = 0;
+    for (auto box = boxes.cbegin(); box != boxes.cend(); box++)
+    {
+        const double occupation = static_cast<double>(occupied_area(*box)) / box_area();
+        if (occupation <= max_occupation) number += box->rectangles.size();
+    }
+    return number;
+}
+
+unsigned int opt::Boxing::least_rectangle_number(const std::vector<Box> &boxes, double max_occupation) const
+{
+    if (boxes.empty()) return 0;
+    unsigned int number = boxes.front().rectangles.size();
+    for (auto box = boxes.cbegin() + 1; box != boxes.cend(); box++)
+    {
+        const double occupation = static_cast<double>(occupied_area(*box)) / box_area();
+        if (occupation <= max_occupation) number = std::min(number, static_cast<unsigned int>(box->rectangles.size()));
+    }
+    return number;
 }
