@@ -5,7 +5,57 @@
 #include <wx/textctrl.h>
 #include <wx/panel.h>
 #include <wx/scrolbar.h>
- 
+
+class BasicDrawPane : public wxPanel
+{
+public:
+    BasicDrawPane(wxFrame* parent);
+    void paintEvent(wxPaintEvent & evt);
+    void paintNow();
+    void render(wxDC& dc);
+    DECLARE_EVENT_TABLE()
+};
+
+BEGIN_EVENT_TABLE(BasicDrawPane, wxPanel)
+    EVT_PAINT(BasicDrawPane::paintEvent)
+END_EVENT_TABLE()
+
+BasicDrawPane::BasicDrawPane(wxFrame* parent) : wxPanel(parent) {}
+
+void BasicDrawPane::paintEvent(wxPaintEvent &)
+{
+    wxPaintDC dc(this);
+    render(dc);
+}
+
+void BasicDrawPane::paintNow()
+{
+    wxClientDC dc(this);
+    render(dc);
+}
+
+void BasicDrawPane::render(wxDC& dc)
+{
+    // draw some text
+    dc.DrawText(wxT("Testing"), 40, 60); 
+    
+    // draw a circle
+    dc.SetBrush(*wxGREEN_BRUSH); // green filling
+    dc.SetPen( wxPen( wxColor(255,0,0), 5 ) ); // 5-pixels-thick red outline
+    dc.DrawCircle( wxPoint(200,100), 25 /* radius */ );
+    
+    // draw a rectangle
+    dc.SetBrush(*wxBLUE_BRUSH); // blue filling
+    dc.SetPen( wxPen( wxColor(255,175,175), 10 ) ); // 10-pixels-thick pink outline
+    dc.DrawRectangle( 300, 100, 400, 200 );
+    
+    // draw a line
+    dc.SetPen( wxPen( wxColor(0,0,0), 3 ) ); // black line, 3 pixels thick
+    dc.DrawLine( 300, 100, 700, 300 ); // draw line across the rectangle
+    
+    // Look at the wxDC docs to learn how to draw other stuff
+}
+
 namespace opt
 {
     class Frame : public wxFrame
@@ -33,7 +83,7 @@ namespace opt
         wxButton *_button_run = nullptr;
         wxButton *_button_next = nullptr;
         wxButton *_button_previous = nullptr;
-        wxPanel *_panel_display = nullptr;
+        BasicDrawPane *_panel_display = nullptr;
         wxScrollBar *_scroll_scroll = nullptr;
         wxStaticText *_text_iteration = nullptr;
 
@@ -41,7 +91,7 @@ namespace opt
         void OnNext(wxCommandEvent &event);
         void OnPrevious(wxCommandEvent &event);
         void OnScroll(wxScrollEvent &event);
-        void OnPaint(wxPaintEvent &event);
+        //void OnPaint(wxPaintEvent &event);
 
     public:
         Frame();
@@ -81,13 +131,13 @@ opt::Frame::Frame() : wxFrame(nullptr, wxID_ANY, "Optimization algorithms")
     _sizer->Add(_button_run = new wxButton(this, wxID_ANY, "Run"), 0, wxEXPAND);
     _sizer->Add(_button_next = new wxButton(this, wxID_ANY, "Next"), 0, wxEXPAND);
     _sizer->Add(_button_previous = new wxButton(this, wxID_ANY, "Previous"), 0, wxEXPAND);
-    _sizer->Add(_panel_display = new wxPanel(this, wxID_ANY), 1, wxEXPAND);
+    _sizer->Add(_panel_display = new BasicDrawPane(this), 1, wxEXPAND);
     _sizer->Add(_scroll_scroll = new wxScrollBar(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxSB_HORIZONTAL), 0, wxEXPAND);
     _sizer->Add(_text_iteration = new wxStaticText(this, wxID_ANY, "Iteration: N/A"), 0, wxEXPAND);
     Bind(wxEVT_BUTTON, &Frame::OnRun, this, _button_run->GetId());
     Bind(wxEVT_BUTTON, &Frame::OnNext, this, _button_next->GetId());
     Bind(wxEVT_BUTTON, &Frame::OnPrevious, this, _button_previous->GetId());
-    Bind(wxEVT_PAINT, &Frame::OnPaint, this, _panel_display->GetId());
+    //Bind(wxEVT_PAINT, &Frame::OnPaint, this, _panel_display->GetId());
     Bind(wxEVT_SCROLL_CHANGED, &Frame::OnScroll, this, _scroll_scroll->GetId());
     _panel_display->Refresh();
     _scroll_scroll->SetScrollbar(0, 10, 20, 10);
@@ -114,29 +164,6 @@ void opt::Frame::OnPrevious(wxCommandEvent &)
 void opt::Frame::OnScroll(wxScrollEvent &)
 {
     wxLogMessage("OnScroll");
-}
-
-void opt::Frame::OnPaint(wxPaintEvent &)
-{
-    wxLogMessage("OnPaint");
-
-    wxPaintDC dc(_panel_display);
-    
-    dc.DrawText(wxT("Testing"), 0, 0); 
-    
-    // draw a circle
-    dc.SetBrush(*wxGREEN_BRUSH);
-    dc.SetPen(wxPen(wxColor(255,0,0), 5));
-    dc.DrawCircle(wxPoint(200,100), 25);
-    
-    // draw a rectangle
-    dc.SetBrush(*wxBLUE_BRUSH);
-    dc.SetPen(wxPen(wxColor(255,175,175), 10));
-    dc.DrawRectangle(300, 100, 400, 200);
-    
-    // draw a line
-    dc.SetPen(wxPen(wxColor(0,0,0), 3));
-    dc.DrawLine( 300, 100, 700, 300);
 }
 
 bool opt::App::OnInit()
