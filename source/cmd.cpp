@@ -57,30 +57,26 @@ std::string parse_neighborhood(const char *s)
 
 int _main(int argc, char **argv)
 {
-    //General
+    //Mode
     std::string method = "greedy";
+    opt::BoxingGreedy::Metric metric = opt::BoxingGreedy::Metric::area;
+    std::string neighborhood = "geometry";
     unsigned int loglevel = 1;
 
-    //Neighborhood
-    unsigned int iter_max = std::numeric_limits<unsigned int>::max();
-    double time_max = std::numeric_limits<double>::infinity();
-
-    //Boxing
+    //Problem
     unsigned int box_size = 10;
     unsigned int item_number = 100;
     unsigned int item_size_min = 1;
     unsigned int item_size_max = 5;
     unsigned int seed = 0;
-
-    //BoxingGreedy
-    opt::BoxingGreedy::Metric metric = opt::BoxingGreedy::Metric::area;
-
-    //BoxingNeighborhood
-    std::string neighborhood = "geometry";
     unsigned int window = 1;
     unsigned int hwindow = 0;
     unsigned int desired_iter = 100;
 
+    //Solution
+    unsigned int iter_max = std::numeric_limits<unsigned int>::max();
+    double time_max = std::numeric_limits<double>::infinity();
+    
     //Parse
     for (int i = 1;;)
     {
@@ -89,18 +85,21 @@ int _main(int argc, char **argv)
         const char *argument = argv[i];
         const char *value = argv[i + 1];
         if (strcmp(argument, "--method") == 0) method = parse_method(value);
+        else if (strcmp(argument, "--metric") == 0) metric = parse_metric(value);
+        else if (strcmp(argument, "--neighborhood") == 0) neighborhood = parse_neighborhood(value);
         else if (strcmp(argument, "--loglevel") == 0) loglevel = parse_uint(value);
-        else if (strcmp(argument, "--iter_max") == 0) iter_max = parse_uint(value);
-        else if (strcmp(argument, "--time_max") == 0) time_max = parse_double(value);
+
         else if (strcmp(argument, "--box_size") == 0) box_size = parse_uint(value);
         else if (strcmp(argument, "--item_number") == 0) item_number = parse_uint(value);
         else if (strcmp(argument, "--item_size_min") == 0) item_size_min = parse_uint(value);
         else if (strcmp(argument, "--item_size_max") == 0) item_size_max = parse_uint(value);
         else if (strcmp(argument, "--seed") == 0) seed = parse_uint(value);
-        else if (strcmp(argument, "--metric") == 0) metric = parse_metric(value);
-        else if (strcmp(argument, "--neighborhood") == 0) neighborhood = parse_neighborhood(value);
         else if (strcmp(argument, "--window") == 0) window = parse_uint(value);
+        else if (strcmp(argument, "--hwindow") == 0) hwindow = parse_uint(value);
         else if (strcmp(argument, "--desired_iter") == 0) desired_iter = parse_uint(value);
+        
+        else if (strcmp(argument, "--iter_max") == 0) iter_max = parse_uint(value);
+        else if (strcmp(argument, "--time_max") == 0) time_max = parse_double(value);
         else throw std::runtime_error("Invalid argument name");
         i += 2;
     }
