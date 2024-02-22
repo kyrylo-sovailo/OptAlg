@@ -189,11 +189,11 @@ bool opt::Boxing::has_overlaps(const std::vector<Box> &boxes) const
         if (image.empty()) image = _image_create(); else _image_clear(&image);
         for (auto rectangle = box->rectangles.cbegin(); rectangle != box->rectangles.cend(); rectangle++)
         {
-            if (!_can_put_rectangle(*rectangle, image)) return false;
+            if (!_can_put_rectangle(*rectangle, image)) return true;
             _image_add(&image, *rectangle);
         }
     }
-    return true;
+    return false;
 }
 
 unsigned int opt::Boxing::overlap_area(const BoxedRectangle &a, const BoxedRectangle &b) const

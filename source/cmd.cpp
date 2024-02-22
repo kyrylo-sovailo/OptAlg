@@ -59,7 +59,7 @@ int _main(int argc, char **argv)
 {
     //General
     std::string method = "greedy";
-    bool verbose = false;
+    unsigned int loglevel = 1;
 
     //Neighborhood
     unsigned int iter_max = std::numeric_limits<unsigned int>::max();
@@ -89,7 +89,7 @@ int _main(int argc, char **argv)
         const char *argument = argv[i];
         const char *value = argv[i + 1];
         if (strcmp(argument, "--method") == 0) method = parse_method(value);
-        else if (strcmp(argument, "--verbose") == 0) verbose = parse_bool(value);
+        else if (strcmp(argument, "--loglevel") == 0) loglevel = parse_uint(value);
         else if (strcmp(argument, "--iter_max") == 0) iter_max = parse_uint(value);
         else if (strcmp(argument, "--time_max") == 0) time_max = parse_double(value);
         else if (strcmp(argument, "--box_size") == 0) box_size = parse_uint(value);
@@ -151,17 +151,31 @@ int _main(int argc, char **argv)
         iteration_count = log.size() - 1;
     }
 
-    //Print
-    std::cout << "Solved in " << std::setprecision(5) << timer << " seconds and " << iteration_count << " iterations" << std::endl;
-    std::cout << "Solution:" << std::endl;
-    for (unsigned int i = 0; i < boxes.size(); i++)
+    //Log level 0
+    if (boxing->has_overlaps(boxes)) throw std::logic_error("Check failed");
+
+    //Log level 1
+    if (loglevel >= 1)
     {
-        const double percentage = static_cast<double>(boxing->occupied_area(boxes[i])) / (boxing->box_size() * boxing->box_size());
-        std::cout << "Box " << i << ": occupied " << std::setprecision(5) << 100 * percentage << "%" << std::endl;
-        if (verbose) for (unsigned int j = 0; j < boxes[i].rectangles.size(); j++)
+        std::cout << "Time      : " << std::setprecision(5) << timer << "s" << std::endl;
+        std::cout << "Boxes     : " << boxes.size() << std::endl;
+        std::cout << "Iterations: " << iteration_count << std::endl;
+        std::cout << "Occupation: " << std::setprecision(5) <<
+            100.0 * boxing->occupied_area(boxes) / (boxes.size() * boxing->box_area()) << "%" << std::endl;
+    }
+
+    //Log level 2
+    if (loglevel >= 2) for (unsigned int i = 0; i < boxes.size(); i++)
+    {
+        std::cout << "Box " << i << ": " <<
+            boxes[i].rectangles.size() << " rectangles, " <<
+            std::setprecision(5) << 100.0 * boxing->occupied_area(boxes[i]) / boxing->box_area() << "% occupied" << std::endl;
+
+        //Log level 3
+        if (loglevel >= 3) for (unsigned int j = 0; j < boxes[i].rectangles.size(); j++)
         {
             const opt::Boxing::BoxedRectangle &r = boxes[i].rectangles[j];
-            std::cout << "    Rectangle " << j << ": ";
+            std::cout << "Rectangle " << j << ": ";
             if (r.transposed)
                 std::cout << "[" << r.rectangle->height << ", " << r.rectangle->width << "] ";
             else
