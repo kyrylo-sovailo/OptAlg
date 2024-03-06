@@ -22,9 +22,6 @@
 
 namespace opt
 {
-    unsigned int parse_uint(const wxTextCtrl *text, const char *error_message);
-    double parse_double(const wxTextCtrl *text, const char *error_message);
-
     class Frame : public wxFrame
     {
     private:
@@ -56,16 +53,24 @@ namespace opt
         wxStaticText *_text_time = nullptr;
 
         //Logic
-        int _mode;
-        std::unique_ptr<opt::Boxing> _boxing;
-        std::vector<std::vector<Boxing::Box>> _log;
-        unsigned int _iteration;
+        int _mode;                                                  //Solving mode, 0 to 5
+        std::unique_ptr<opt::Boxing> _boxing;                       //Boxing problem
+        std::vector<std::vector<Boxing::Box>> _log;                 //Log transformed to boxes
+        std::vector<BoxingNeighborhoodOrder::Solution> _log_order;  //Log specific to order neighborhood
+        unsigned int _iteration;                                    //Current iteration
 
-        void OnRun(wxCommandEvent &event);
-        void OnNext(wxCommandEvent &event);
-        void OnPrevious(wxCommandEvent &event);
-        void OnScroll(wxScrollEvent &event);
-        void OnPaint(wxPaintEvent &event);
+        //Functions
+        static unsigned int _parse_uint(const wxTextCtrl *text, const char *error_message);
+        static double _parse_double(const wxTextCtrl *text, const char *error_message);
+        static std::set<const Boxing::Rectangle*> _get_changes(const std::vector<Boxing::Box> &a, const std::vector<Boxing::Box> &b);
+        static std::set<const Boxing::Rectangle*> _get_changes(const BoxingNeighborhoodOrder::Solution &a, const BoxingNeighborhoodOrder::Solution &b);
+
+        //Events
+        void _on_run(wxCommandEvent &event);
+        void _on_next(wxCommandEvent &event);
+        void _on_previous(wxCommandEvent &event);
+        void _on_scroll(wxScrollEvent &event);
+        void _on_paint(wxPaintEvent &event);
 
     public:
         Frame();
@@ -78,7 +83,7 @@ namespace opt
     };
 }
 
-unsigned int opt::parse_uint(const wxTextCtrl *text, const char *error_message)
+unsigned int opt::Frame::_parse_uint(const wxTextCtrl *text, const char *error_message)
 {
     std::string s = text->GetValue().ToStdString();
     if (s == "inf") return std::numeric_limits<unsigned int>::max();
@@ -88,7 +93,7 @@ unsigned int opt::parse_uint(const wxTextCtrl *text, const char *error_message)
     return result;
 }
 
-double opt::parse_double(const wxTextCtrl *text, const char *error_message)
+double opt::Frame::_parse_double(const wxTextCtrl *text, const char *error_message)
 {
     std::string s = text->GetValue().ToStdString();
     if (s == "inf") return std::numeric_limits<double>::infinity();
@@ -98,63 +103,157 @@ double opt::parse_double(const wxTextCtrl *text, const char *error_message)
     return result;
 }
 
-opt::Frame::Frame() : wxFrame(nullptr, wxID_ANY, "Optimization algorithms")
+std::set<const opt::Boxing::Rectangle*> opt::Frame::_get_changes(const std::vector<Boxing::Box> &a, const std::vector<Boxing::Box> &b)
 {
-    _sizer = new wxBoxSizer(wxVERTICAL);
-	
-    //Mode
-    const wxString choices[] = { "Greedy (area)", "Greedy (largest side)", "Greedy (smallest side)",
-        "Local search (geometry)", "Local search (order)", "Local search (geometry/overlaps)" };
-    _sizer->Add(new wxStaticText(this, wxID_ANY, "Mode:"), 0, wxEXPAND);
-    _sizer->Add(_selector_mode = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, 6, choices), 0, wxEXPAND);
-    _selector_mode->SetSelection(0);
+    typedef std::vector<Boxing::Box>::const_iterator box_iter;
+    typedef std::vector<Boxing::BoxedRectangle>::const_iterator rectangle_iter;
+    struct Util
+    {
+        static void find_initial(const std::vector<Boxing::Box> &boxes, box_iter &box, rectangle_iter &rectangle)
+        {
+            box = boxes.cbegin();
+            while (true)
+            {
+                if (box == boxes.cend()) break; //Fail
+                rectangle = box->rectangles.begin();
+                if (rectangle != box->rectangles.cend()) break; //Success
+                box++;
+            }
+        }
+        static void find_next(const std::vector<Boxing::Box> &boxes, box_iter &box, rectangle_iter &rectangle)
+        {
+            rectangle++;
+            while (true)
+            {
+                if (rectangle != box->rectangles.cend()) break; //Success
+                box++;
+                if (box == boxes.cend()) break; //Fail
+                rectangle = box->rectangles.begin();
+            }
+        }
+        static bool valid(const std::vector<Boxing::Box> &boxes, box_iter box, rectangle_iter rectangle)
+        {
+            return box != boxes.cend() && rectangle != box->rectangles.cend();
+        }
+    };
+    box_iter a_box, b_box;
+    rectangle_iter a_rectangle, b_rectangle;
+    Util::find_initial(a, a_box, a_rectangle);
+    Util::find_initial(b, b_box, b_rectangle);
+    std::set<const opt::Boxing::Rectangle*> changes;
 
-    //Problem
-    _sizer->Add(new wxStaticText(this, wxID_ANY, "Box size:"), 0, wxEXPAND);
-    _sizer->Add(_edit_box_size = new wxTextCtrl(this, wxID_ANY, "10"), 0, wxEXPAND);
-    _sizer->Add(new wxStaticText(this, wxID_ANY, "Item number:"), 0, wxEXPAND);
-    _sizer->Add(_edit_item_number = new wxTextCtrl(this, wxID_ANY, "100"), 0, wxEXPAND);
-    _sizer->Add(new wxStaticText(this, wxID_ANY, "Minimal item size:"), 0, wxEXPAND);
-    _sizer->Add(_edit_item_size_min = new wxTextCtrl(this, wxID_ANY, "1"), 0, wxEXPAND);
-    _sizer->Add(new wxStaticText(this, wxID_ANY, "Maximal item size:"), 0, wxEXPAND);
-    _sizer->Add(_edit_item_size_max = new wxTextCtrl(this, wxID_ANY, "5"), 0, wxEXPAND);
-    _sizer->Add(new wxStaticText(this, wxID_ANY, "Seed:"), 0, wxEXPAND);
-    _sizer->Add(_edit_seed = new wxTextCtrl(this, wxID_ANY, "0"), 0, wxEXPAND);
-    _sizer->Add(new wxStaticText(this, wxID_ANY, "Window size:"), 0, wxEXPAND);
-    _sizer->Add(_edit_window = new wxTextCtrl(this, wxID_ANY, "1"), 0, wxEXPAND);
-    _sizer->Add(new wxStaticText(this, wxID_ANY, "Vertical window size:"), 0, wxEXPAND);
-    _sizer->Add(_edit_hwindow = new wxTextCtrl(this, wxID_ANY, "0"), 0, wxEXPAND);
-    _sizer->Add(new wxStaticText(this, wxID_ANY, "Desired iteration:"), 0, wxEXPAND);
-    _sizer->Add(_edit_desired_iter = new wxTextCtrl(this, wxID_ANY, "100"), 0, wxEXPAND);
+    while (true)
+    {
+        const Boxing::Rectangle *a_rectangle_p = Util::valid(a, a_box, a_rectangle) ? a_rectangle->rectangle : nullptr;
+        const Boxing::Rectangle *b_rectangle_p = Util::valid(b, b_box, b_rectangle) ? b_rectangle->rectangle : nullptr;
 
-    //Solution
-    _sizer->Add(new wxStaticText(this, wxID_ANY, "Iteration limit:"), 0, wxEXPAND);
-    _sizer->Add(_edit_iter_max = new wxTextCtrl(this, wxID_ANY, "inf"), 0, wxEXPAND);
-    _sizer->Add(new wxStaticText(this, wxID_ANY, "Time limit, seconds:"), 0, wxEXPAND);
-    _sizer->Add(_edit_time_max = new wxTextCtrl(this, wxID_ANY, "inf"), 0, wxEXPAND);
-
-    //Technical
-    _sizer->Add(_button_run = new wxButton(this, wxID_ANY, "Run"), 0, wxEXPAND);
-    _sizer->Add(_button_next = new wxButton(this, wxID_ANY, "Next"), 0, wxEXPAND);
-    _sizer->Add(_button_previous = new wxButton(this, wxID_ANY, "Previous"), 0, wxEXPAND);
-    _sizer->Add(_panel_display = new wxPanel(this, wxID_ANY), 1, wxEXPAND);
-    _sizer->Add(_scroll_scroll = new wxScrollBar(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxSB_HORIZONTAL), 0, wxEXPAND);
-    _sizer->Add(_text_iteration = new wxStaticText(this, wxID_ANY, "Iteration: N/A"), 0, wxEXPAND);
-    _sizer->Add(_text_time = new wxStaticText(this, wxID_ANY, "Time: N/A"), 0, wxEXPAND);
-    Bind(wxEVT_BUTTON, &Frame::OnRun, this, _button_run->GetId());
-    Bind(wxEVT_BUTTON, &Frame::OnNext, this, _button_next->GetId());
-    Bind(wxEVT_BUTTON, &Frame::OnPrevious, this, _button_previous->GetId());
-    _panel_display->Bind(wxEVT_PAINT, &Frame::OnPaint, this, _panel_display->GetId());
-    Bind(wxEVT_SCROLL_CHANGED, &Frame::OnScroll, this, _scroll_scroll->GetId());
-	
-    SetSizer(_sizer);
-    SetAutoLayout(true);
-    wxDisplay display(0u);
-    SetSize(2 * display.GetClientArea().GetSize() / 3);
-    SetPosition(wxPoint(display.GetClientArea().GetSize().GetWidth() / 6, display.GetClientArea().GetSize().GetHeight() / 6));
+        if (a_rectangle_p == nullptr && b_rectangle_p == nullptr)
+        {
+            //Reached end
+            break;
+        }
+        else if (a_rectangle_p != b_rectangle_p)
+        {
+            //Different rectangles
+            box_iter next_a_box = a_box, next_b_box = b_box;
+            rectangle_iter next_a_rectangle = a_rectangle, next_b_rectangle = b_rectangle;
+            if (a_rectangle_p != nullptr) Util::find_next(a, next_a_box, next_a_rectangle);
+            if (b_rectangle_p != nullptr) Util::find_next(b, next_b_box, next_b_rectangle);
+            const Boxing::Rectangle *next_a_rectangle_p = Util::valid(a, next_a_box, next_a_rectangle) ? next_a_rectangle->rectangle : nullptr;
+            const Boxing::Rectangle *next_b_rectangle_p = Util::valid(b, next_b_box, next_b_rectangle) ? next_b_rectangle->rectangle : nullptr;
+            
+            const bool insert_a = next_a_rectangle_p == b_rectangle_p;
+            const bool insert_b = next_b_rectangle_p == a_rectangle_p;
+            const bool swap_ab = insert_a && insert_b;
+            if (insert_a)
+            {
+                a_box = next_a_box;
+                a_rectangle = next_a_rectangle;
+                if (a_rectangle_p != nullptr) changes.insert(a_rectangle_p);
+            }
+            if (insert_b)
+            {
+                b_box = next_b_box;
+                b_rectangle = next_b_rectangle;
+                if (b_rectangle_p != nullptr) changes.insert(b_rectangle_p);
+            }
+            if (swap_ab)
+            {
+                if (Util::valid(a, a_box, a_rectangle)) Util::find_next(a, a_box, a_rectangle);
+                if (Util::valid(b, b_box, b_rectangle)) Util::find_next(b, b_box, b_rectangle);
+            }
+        }
+        else if (a_rectangle->x != b_rectangle->x || a_rectangle->y != b_rectangle->y || a_rectangle->transposed != b_rectangle->transposed
+        || static_cast<size_t>(a_box - a.begin()) != static_cast<size_t>(b_box - b.begin()))
+        {
+            //Different rectangle positions
+            changes.insert(a_rectangle->rectangle);
+            Util::find_next(a, a_box, a_rectangle);
+            Util::find_next(b, b_box, b_rectangle);
+        }
+        else
+        {
+            //All same
+            Util::find_next(a, a_box, a_rectangle);
+            Util::find_next(b, b_box, b_rectangle);
+        }
+    }
+    return changes;
 }
 
-void opt::Frame::OnRun(wxCommandEvent &)
+std::set<const opt::Boxing::Rectangle*> opt::Frame::_get_changes(const BoxingNeighborhoodOrder::Solution &a, const BoxingNeighborhoodOrder::Solution &b)
+{
+    auto a_rectangle = a.begin();
+    auto b_rectangle = b.begin();
+    std::set<const opt::Boxing::Rectangle*> changes;
+    while (true)
+    {
+        const Boxing::Rectangle *a_rectangle_p = a_rectangle != a.cend() ? *a_rectangle : nullptr;
+        const Boxing::Rectangle *b_rectangle_p = b_rectangle != b.cend() ? *b_rectangle : nullptr;
+
+        if (a_rectangle_p == nullptr && b_rectangle_p == nullptr)
+        {
+            //Reached end
+            break;
+        }
+        else if (a_rectangle_p != b_rectangle_p)
+        {
+            //Different rectangles
+            auto next_a_rectangle = a_rectangle + 1;
+            auto next_b_rectangle = b_rectangle + 1;
+            const Boxing::Rectangle *next_a_rectangle_p = next_a_rectangle != a.cend() ? *next_a_rectangle : nullptr;
+            const Boxing::Rectangle *next_b_rectangle_p = next_b_rectangle != b.cend() ? *next_b_rectangle : nullptr;
+            
+            const bool insert_a = next_a_rectangle_p == b_rectangle_p;
+            const bool insert_b = next_b_rectangle_p == a_rectangle_p;
+            const bool swap_ab = insert_a && insert_b;
+            if (insert_a)
+            {
+                a_rectangle++;
+                if (a_rectangle_p != nullptr) changes.insert(a_rectangle_p);
+            }
+            if (insert_b)
+            {
+                b_rectangle++;
+                if (b_rectangle_p != nullptr) changes.insert(b_rectangle_p);
+            }
+            if (swap_ab)
+            {
+                if (a_rectangle != a.cend()) a_rectangle++;
+                if (b_rectangle != b.cend()) b_rectangle++;
+            }
+        }
+        else
+        {
+            //Same rectangles
+            if (a_rectangle != a.cend()) a_rectangle++;
+            if (b_rectangle != b.cend()) b_rectangle++;
+        }
+    }
+    return changes;
+}
+
+void opt::Frame::_on_run(wxCommandEvent &)
 {
     try
     {
@@ -162,18 +261,18 @@ void opt::Frame::OnRun(wxCommandEvent &)
         if (mode < 0 || mode > 5) throw std::runtime_error("Invalid mode");
 
         //Problem
-        const unsigned int box_size = parse_uint(_edit_box_size, "Invalid box size");
-        const unsigned int item_number = parse_uint(_edit_item_number, "Invalid item number size");
-        const unsigned int item_size_min = parse_uint(_edit_item_size_min, "Invalid minimal item size");
-        const unsigned int item_size_max = parse_uint(_edit_item_size_max, "Invalid maximal item size");
-        const unsigned int seed = parse_uint(_edit_seed, "Invalid seed");
-        const unsigned int window = parse_uint(_edit_window, "Invalid window size");
-        const unsigned int hwindow = parse_uint(_edit_hwindow, "Invalid vertical window size");
-        const unsigned int desired_iter = parse_uint(_edit_desired_iter, "Invalid desired iteration");
+        const unsigned int box_size = _parse_uint(_edit_box_size, "Invalid box size");
+        const unsigned int item_number = _parse_uint(_edit_item_number, "Invalid item number size");
+        const unsigned int item_size_min = _parse_uint(_edit_item_size_min, "Invalid minimal item size");
+        const unsigned int item_size_max = _parse_uint(_edit_item_size_max, "Invalid maximal item size");
+        const unsigned int seed = _parse_uint(_edit_seed, "Invalid seed");
+        const unsigned int window = _parse_uint(_edit_window, "Invalid window size");
+        const unsigned int hwindow = _parse_uint(_edit_hwindow, "Invalid vertical window size");
+        const unsigned int desired_iter = _parse_uint(_edit_desired_iter, "Invalid desired iteration");
 
         //Solution
-        const unsigned int iter_max = parse_uint(_edit_iter_max, "Invalid iteration limit");
-        const double time_max = parse_double(_edit_time_max, "Invalid time limit");
+        const unsigned int iter_max = _parse_uint(_edit_iter_max, "Invalid iteration limit");
+        const double time_max = _parse_double(_edit_time_max, "Invalid time limit");
 
         double timer;
         if (mode >= 0 && mode <= 2)
@@ -232,7 +331,7 @@ void opt::Frame::OnRun(wxCommandEvent &)
     }
 }
 
-void opt::Frame::OnNext(wxCommandEvent &)
+void opt::Frame::_on_next(wxCommandEvent &)
 {
     if (_iteration + 1 < _log.size())
     {
@@ -242,7 +341,7 @@ void opt::Frame::OnNext(wxCommandEvent &)
     }
 }
 
-void opt::Frame::OnPrevious(wxCommandEvent &)
+void opt::Frame::_on_previous(wxCommandEvent &)
 {
     if (_iteration > 0)
     {
@@ -252,14 +351,14 @@ void opt::Frame::OnPrevious(wxCommandEvent &)
     }
 }
 
-void opt::Frame::OnScroll(wxScrollEvent &)
+void opt::Frame::_on_scroll(wxScrollEvent &)
 {
     _iteration = _scroll_scroll->GetScrollPos(wxHORIZONTAL);
     if (_iteration > _log.size() - 1) _iteration = _log.size() - 1;
     _text_iteration->SetLabel("Iteration: " + std::to_string(_iteration) + "/" + std::to_string(_log.size()));
 }
 
-void opt::Frame::OnPaint(wxPaintEvent &)
+void opt::Frame::_on_paint(wxPaintEvent &)
 {
     wxPaintDC dc(_panel_display);
     if (_log.empty()) return;
@@ -277,6 +376,10 @@ void opt::Frame::OnPaint(wxPaintEvent &)
     const unsigned int box_offset_x = (box_margin_width - box_size) / 2;
     const unsigned int box_offset_y = (box_margin_height - box_size) / 2;
 
+    //Find selection
+    std::set<const Boxing::Rectangle*> selection;
+    if (_iteration > 0) selection = _get_changes(_log[_iteration - 1], _log[_iteration]);
+
     //Clear background
     dc.SetBackground(*wxWHITE_BRUSH);
     dc.Clear();
@@ -289,6 +392,73 @@ void opt::Frame::OnPaint(wxPaintEvent &)
         const unsigned int boxes_y = box_i / boxes_width;
         dc.DrawRectangle(box_margin_width * boxes_x + box_offset_x, box_margin_height * boxes_y + box_offset_y, box_size, box_size);
     }
+
+
+    /*
+    dc.SetBrush(*wxBLACK_BRUSH);
+    for (unsigned int box_i = 0; box_i < boxes.size(); box_i++)
+    {
+        const unsigned int boxes_x = box_i % boxes_width;
+        const unsigned int boxes_y = box_i / boxes_width;
+        dc.DrawRectangle(box_margin_width * boxes_x + box_offset_x, box_margin_height * boxes_y + box_offset_y, box_size, box_size);
+    }
+    */
+}
+
+opt::Frame::Frame() : wxFrame(nullptr, wxID_ANY, "Optimization algorithms")
+{
+    _sizer = new wxBoxSizer(wxVERTICAL);
+	
+    //Mode
+    const wxString choices[] = { "Greedy (area)", "Greedy (largest side)", "Greedy (smallest side)",
+        "Local search (geometry)", "Local search (order)", "Local search (geometry/overlaps)" };
+    _sizer->Add(new wxStaticText(this, wxID_ANY, "Mode:"), 0, wxEXPAND);
+    _sizer->Add(_selector_mode = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, 6, choices), 0, wxEXPAND);
+    _selector_mode->SetSelection(0);
+
+    //Problem
+    _sizer->Add(new wxStaticText(this, wxID_ANY, "Box size:"), 0, wxEXPAND);
+    _sizer->Add(_edit_box_size = new wxTextCtrl(this, wxID_ANY, "10"), 0, wxEXPAND);
+    _sizer->Add(new wxStaticText(this, wxID_ANY, "Item number:"), 0, wxEXPAND);
+    _sizer->Add(_edit_item_number = new wxTextCtrl(this, wxID_ANY, "100"), 0, wxEXPAND);
+    _sizer->Add(new wxStaticText(this, wxID_ANY, "Minimal item size:"), 0, wxEXPAND);
+    _sizer->Add(_edit_item_size_min = new wxTextCtrl(this, wxID_ANY, "1"), 0, wxEXPAND);
+    _sizer->Add(new wxStaticText(this, wxID_ANY, "Maximal item size:"), 0, wxEXPAND);
+    _sizer->Add(_edit_item_size_max = new wxTextCtrl(this, wxID_ANY, "5"), 0, wxEXPAND);
+    _sizer->Add(new wxStaticText(this, wxID_ANY, "Seed:"), 0, wxEXPAND);
+    _sizer->Add(_edit_seed = new wxTextCtrl(this, wxID_ANY, "0"), 0, wxEXPAND);
+    _sizer->Add(new wxStaticText(this, wxID_ANY, "Window size:"), 0, wxEXPAND);
+    _sizer->Add(_edit_window = new wxTextCtrl(this, wxID_ANY, "1"), 0, wxEXPAND);
+    _sizer->Add(new wxStaticText(this, wxID_ANY, "Vertical window size:"), 0, wxEXPAND);
+    _sizer->Add(_edit_hwindow = new wxTextCtrl(this, wxID_ANY, "0"), 0, wxEXPAND);
+    _sizer->Add(new wxStaticText(this, wxID_ANY, "Desired iteration:"), 0, wxEXPAND);
+    _sizer->Add(_edit_desired_iter = new wxTextCtrl(this, wxID_ANY, "100"), 0, wxEXPAND);
+
+    //Solution
+    _sizer->Add(new wxStaticText(this, wxID_ANY, "Iteration limit:"), 0, wxEXPAND);
+    _sizer->Add(_edit_iter_max = new wxTextCtrl(this, wxID_ANY, "inf"), 0, wxEXPAND);
+    _sizer->Add(new wxStaticText(this, wxID_ANY, "Time limit, seconds:"), 0, wxEXPAND);
+    _sizer->Add(_edit_time_max = new wxTextCtrl(this, wxID_ANY, "inf"), 0, wxEXPAND);
+
+    //Technical
+    _sizer->Add(_button_run = new wxButton(this, wxID_ANY, "Run"), 0, wxEXPAND);
+    _sizer->Add(_button_next = new wxButton(this, wxID_ANY, "Next"), 0, wxEXPAND);
+    _sizer->Add(_button_previous = new wxButton(this, wxID_ANY, "Previous"), 0, wxEXPAND);
+    _sizer->Add(_panel_display = new wxPanel(this, wxID_ANY), 1, wxEXPAND);
+    _sizer->Add(_scroll_scroll = new wxScrollBar(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxSB_HORIZONTAL), 0, wxEXPAND);
+    _sizer->Add(_text_iteration = new wxStaticText(this, wxID_ANY, "Iteration: N/A"), 0, wxEXPAND);
+    _sizer->Add(_text_time = new wxStaticText(this, wxID_ANY, "Time: N/A"), 0, wxEXPAND);
+    Bind(wxEVT_BUTTON, &Frame::_on_run, this, _button_run->GetId());
+    Bind(wxEVT_BUTTON, &Frame::_on_next, this, _button_next->GetId());
+    Bind(wxEVT_BUTTON, &Frame::_on_previous, this, _button_previous->GetId());
+    _panel_display->Bind(wxEVT_PAINT, &Frame::_on_paint, this, _panel_display->GetId());
+    Bind(wxEVT_SCROLL_CHANGED, &Frame::_on_scroll, this, _scroll_scroll->GetId());
+	
+    SetSizer(_sizer);
+    SetAutoLayout(true);
+    wxDisplay display(0u);
+    SetSize(2 * display.GetClientArea().GetSize() / 3);
+    SetPosition(wxPoint(display.GetClientArea().GetSize().GetWidth() / 6, display.GetClientArea().GetSize().GetHeight() / 6));
 }
 
 bool opt::App::OnInit()
