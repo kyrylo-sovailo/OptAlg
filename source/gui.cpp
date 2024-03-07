@@ -306,7 +306,8 @@ void opt::Frame::_on_run(wxCommandEvent &)
             std::vector<Problem::Solution> log;
             Problem::Solution solution = neighborhood(*problem, iter_max, time_max, &log, &timer);
             _log.resize(log.size());
-            for (unsigned int i = 0; i < log.size(); i++) _log[i] = problem->get_boxes(log[i]);
+            _log_order.resize(log.size());
+            for (unsigned int i = 0; i < log.size(); i++) { _log[i] = problem->get_boxes(log[i]); _log_order[i] = log[i]; }
         }
         else
         {
@@ -337,6 +338,7 @@ void opt::Frame::_on_next(wxCommandEvent &)
         _iteration++;
         _scroll_scroll->SetScrollbar(_iteration, _log.size() / 10, _log.size(), 10);
         _text_iteration->SetLabel("Iteration: " + std::to_string(_iteration) + "/" + std::to_string(_log.size()));
+        _panel_display->Refresh();
     }
 }
 
@@ -347,6 +349,7 @@ void opt::Frame::_on_previous(wxCommandEvent &)
         _iteration--;
         _scroll_scroll->SetScrollbar(_iteration, _log.size() / 10, _log.size(), 10);
         _text_iteration->SetLabel("Iteration: " + std::to_string(_iteration) + "/" + std::to_string(_log.size()));
+        _panel_display->Refresh();
     }
 }
 
@@ -355,15 +358,17 @@ void opt::Frame::_on_scroll(wxScrollEvent &)
     _iteration = _scroll_scroll->GetScrollPos(wxHORIZONTAL);
     if (_iteration > _log.size() - 1) _iteration = _log.size() - 1;
     _text_iteration->SetLabel("Iteration: " + std::to_string(_iteration) + "/" + std::to_string(_log.size()));
+    _panel_display->Refresh();
 }
 
 void opt::Frame::_on_paint(wxPaintEvent &)
 {
     wxPaintDC dc(_panel_display);
     if (_log.empty()) return;
+    const std::vector<Boxing::Box> &boxes = _log[_iteration];
+    if (boxes.empty()) return;
 
     //Calculate sizes
-    const std::vector<Boxing::Box> &boxes = _log[_iteration];
     const wxSize panel_size = _panel_display->GetSize();
     const unsigned int boxes_width = static_cast<unsigned int>(
         std::ceil(std::sqrt(1.0 * boxes.size() * panel_size.GetWidth() / panel_size.GetHeight())));
@@ -377,31 +382,73 @@ void opt::Frame::_on_paint(wxPaintEvent &)
 
     //Find selection
     std::set<const Boxing::Rectangle*> selection;
-    if (_iteration > 0) selection = _get_changes(_log[_iteration - 1], _log[_iteration]);
+    if (_iteration > 0 && _mode == 4) selection = _get_changes(_log_order[_iteration - 1], _log_order[_iteration]);
+    else if (_iteration > 0 && _mode != 4) selection = _get_changes(_log[_iteration - 1], _log[_iteration]);
 
     //Clear background
     dc.SetBackground(*wxWHITE_BRUSH);
     dc.Clear();
 
     //Draw boxes
-    dc.SetBrush(*wxBLACK_BRUSH);
+    wxPen pen(*wxBLACK, 2);
+    dc.SetPen(pen);
     for (unsigned int box_i = 0; box_i < boxes.size(); box_i++)
     {
         const unsigned int boxes_x = box_i % boxes_width;
         const unsigned int boxes_y = box_i / boxes_width;
-        dc.DrawRectangle(box_margin_width * boxes_x + box_offset_x, box_margin_height * boxes_y + box_offset_y, box_size, box_size);
-    }
+        const unsigned int local_x = box_margin_width * boxes_x + box_offset_x;
+        const unsigned int local_y = box_margin_height * boxes_y + box_offset_y;
 
+        //Draw rectangles
+        for (auto rectangle = boxes[box_i].rectangles.cbegin(); rectangle != boxes[box_i].rectangles.cend(); rectangle++)
+        {
+            if (selection.count(rectangle->rectangle) == 0) dc.SetBrush(*wxGREY_BRUSH);
+            else if (*selection.begin() == rectangle->rectangle) dc.SetBrush(*wxYELLOW_BRUSH);
+            else dc.SetBrush(*wxBLUE_BRUSH);
+            const unsigned int rectangle_x_begin = box_size * rectangle->x / _boxing->box_size();
+            const unsigned int rectangle_x_end = box_size * rectangle->x_end() / _boxing->box_size();
+            const unsigned int rectangle_y_begin = box_size * rectangle->y / _boxing->box_size();
+            const unsigned int rectangle_y_end = box_size * rectangle->y_end() / _boxing->box_size();
+            dc.DrawRectangle(
+                local_x + rectangle_x_begin, local_y + box_size - rectangle_y_end,
+                rectangle_x_end - rectangle_x_begin, rectangle_y_end - rectangle_y_begin);
+        }
 
-    /*
-    dc.SetBrush(*wxBLACK_BRUSH);
-    for (unsigned int box_i = 0; box_i < boxes.size(); box_i++)
-    {
-        const unsigned int boxes_x = box_i % boxes_width;
-        const unsigned int boxes_y = box_i / boxes_width;
-        dc.DrawRectangle(box_margin_width * boxes_x + box_offset_x, box_margin_height * boxes_y + box_offset_y, box_size, box_size);
+        //Draw lines
+        for (auto rectangle = boxes[box_i].rectangles.cbegin(); rectangle != boxes[box_i].rectangles.cend(); rectangle++)
+        {
+            const unsigned int rectangle_x_begin = box_size * rectangle->x / _boxing->box_size();
+            const unsigned int rectangle_x_end = box_size * rectangle->x_end() / _boxing->box_size();
+            const unsigned int rectangle_y_begin = box_size * rectangle->y / _boxing->box_size();
+            const unsigned int rectangle_y_end = box_size * rectangle->y_end() / _boxing->box_size();
+            dc.DrawLine(
+                local_x + rectangle_x_begin, local_y + box_size - rectangle_y_begin,
+                local_x + rectangle_x_begin, local_y + box_size - rectangle_y_end);
+            dc.DrawLine(
+                local_x + rectangle_x_begin, local_y + box_size - rectangle_y_end,
+                local_x + rectangle_x_end, local_y + box_size - rectangle_y_end);
+            dc.DrawLine(
+                local_x + rectangle_x_end, local_y + box_size - rectangle_y_end,
+                local_x + rectangle_x_end, local_y + box_size - rectangle_y_begin);
+            dc.DrawLine(
+                local_x + rectangle_x_end, local_y + box_size - rectangle_y_begin,
+                local_x + rectangle_x_begin, local_y + box_size - rectangle_y_begin);
+        }
+
+        //Draw border
+        dc.DrawLine(
+            local_x + 0, local_y + 0,
+            local_x + 0, local_y + box_size);
+        dc.DrawLine(
+            local_x + 0, local_y + box_size,
+            local_x + box_size, local_y + box_size);
+        dc.DrawLine(
+            local_x + box_size, local_y + box_size,
+            local_x + box_size, local_y + 0);
+        dc.DrawLine(
+            local_x + box_size, local_y + 0,
+            local_x + 0, local_y + 0);
     }
-    */
 }
 
 opt::Frame::Frame() : wxFrame(nullptr, wxID_ANY, "Optimization algorithms")
@@ -442,7 +489,7 @@ opt::Frame::Frame() : wxFrame(nullptr, wxID_ANY, "Optimization algorithms")
     vsizer->Add(_edit_time_max = new wxTextCtrl(this, wxID_ANY, "inf"), 0, wxEXPAND);
 
     //Technical
-    sizer->Add(vsizer, 1, wxEXPAND);
+    sizer->Add(vsizer, 0, wxEXPAND);
     sizer->Add(_button_run = new wxButton(this, wxID_ANY, "Run"), 0, wxEXPAND);
     sizer->Add(_button_next = new wxButton(this, wxID_ANY, "Next"), 0, wxEXPAND);
     sizer->Add(_button_previous = new wxButton(this, wxID_ANY, "Previous"), 0, wxEXPAND);

@@ -16,8 +16,8 @@ opt::BoxingNeighborhoodGeometry::Solution opt::BoxingNeighborhoodGeometry::initi
     for (auto rectangle = _rectangles.cbegin(); rectangle != _rectangles.cend(); rectangle++)
     {
         //Randomly generate position
-        std::uniform_int_distribution<unsigned int> x_distribution(0, _box_size - rectangle->width + 1);
-        std::uniform_int_distribution<unsigned int> y_distribution(0, _box_size - rectangle->height + 1);
+        std::uniform_int_distribution<unsigned int> x_distribution(0, _box_size - rectangle->width);
+        std::uniform_int_distribution<unsigned int> y_distribution(0, _box_size - rectangle->height);
         BoxedRectangle boxed_rectangle(*rectangle, x_distribution(engine), y_distribution(engine), false);
 
         //Try to fit in last box
@@ -153,7 +153,7 @@ double opt::BoxingNeighborhoodGeometry::heuristic(const Solution &solution, unsi
     return energy(solution);
 }
 
-bool opt::BoxingNeighborhoodGeometry::good(const Solution &) const
+bool opt::BoxingNeighborhoodGeometry::good(const Solution &, unsigned int) const
 {
     return true;
 }

@@ -20,7 +20,7 @@ namespace opt
      - Solution Problem::initial() returns initial feasible solution
      - SolutionContainer Problem::neighbors(Solution solution, int id, int threads) returns solution neighbors
      - double Problem::heuristic(Solution solution, unsigned int iter) returns solution heuristics
-     - bool Problem::good(Solution solution) returns if solution is good enough and algorithm can terminate
+     - bool Problem::good(Solution solution, unsigned int iter) returns if solution is good enough and algorithm can terminate
     */
     template <class Problem> typename Problem::Solution neighborhood(
         Problem &problem,
@@ -119,7 +119,7 @@ namespace opt
             }
             
             //Exit
-            if (problem.good(solution))
+            if (problem.good(solution, iter))
             {
                 if (!std::isfinite(best_neighbor_heuristic)) break;             //No better neighbor
                 else if (iter >= iter_max) break;                               //Maximum iteration reached

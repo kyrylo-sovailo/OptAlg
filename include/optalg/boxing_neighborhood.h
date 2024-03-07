@@ -21,7 +21,7 @@ namespace opt
         Solution initial(unsigned int seed) const;
         SolutionContainer neighbors(const Solution &solution, std::default_random_engine &engine, unsigned int id = 0, unsigned int nthreads = 1) const;
         double heuristic(const Solution &solution, unsigned int iter) const;
-        bool good(const Solution &solution) const;
+        bool good(const Solution &solution, unsigned int iter) const;
 
         //Getting specific data
         std::vector<Box> get_boxes(const Solution &solution) const;
@@ -43,7 +43,7 @@ namespace opt
         Solution initial(unsigned int seed) const;
         SolutionContainer neighbors(const Solution &solution, std::default_random_engine &engine, unsigned int id = 0, unsigned int nthreads = 1) const;
         double heuristic(const Solution &solution, unsigned int iter) const;
-        bool good(const Solution &solution) const;
+        bool good(const Solution &solution, unsigned int iter) const;
 
         //Getting specific data
         std::vector<Box> get_boxes(const Solution &solution) const;
@@ -66,7 +66,7 @@ namespace opt
         Solution initial(unsigned int seed) const;
         SolutionContainer neighbors(const Solution &solution, std::default_random_engine &engine, unsigned int id = 0, unsigned int nthreads = 1) const;
         double heuristic(const Solution &solution, unsigned int iter) const;
-        bool good(const Solution &solution) const;
+        bool good(const Solution &solution, unsigned int iter) const;
 
         //Getting specific data
         std::vector<Box> get_boxes(const Solution &solution) const;

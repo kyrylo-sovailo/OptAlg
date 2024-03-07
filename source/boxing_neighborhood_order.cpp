@@ -77,7 +77,7 @@ double opt::BoxingNeighborhoodOrder::heuristic(const Solution &solution, unsigne
     return energy(boxes);
 }
 
-bool opt::BoxingNeighborhoodOrder::good(const Solution &) const
+bool opt::BoxingNeighborhoodOrder::good(const Solution &, unsigned int) const
 {
     return true;
 }

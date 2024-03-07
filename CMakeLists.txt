@@ -7,12 +7,15 @@ source/boxing_greedy.cpp
 source/boxing_neighborhood_geometry.cpp
 source/boxing_neighborhood_order.cpp
 source/boxing_neighborhood_geometry_overlap.cpp)
+if (DEBUG_OVERLAPS)
+    target_compile_definitions(optalg PRIVATE DEBUG_OVERLAPS)
+endif()
 
 add_executable(optalg_cmd source/cmd.cpp)
 target_link_libraries(optalg_cmd PRIVATE optalg)
 
 find_package(wxWidgets REQUIRED COMPONENTS core base)
-if(wxWidgets_USE_FILE)
+if (wxWidgets_USE_FILE)
     include(${wxWidgets_USE_FILE})
 endif()
 add_executable(optalg_gui source/gui.cpp)

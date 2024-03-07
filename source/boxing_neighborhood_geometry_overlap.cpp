@@ -1,5 +1,9 @@
 #include "../include/optalg/boxing_neighborhood.h"
+#include <limits>
 #include <random>
+#ifdef DEBUG_OVERLAPS
+    #include <iostream>
+#endif
 
 opt::BoxingNeighborhoodGeometryOverlap::BoxingNeighborhoodGeometryOverlap(unsigned int box_size, unsigned int item_number, unsigned int item_size_min, unsigned int item_size_max,
     unsigned int seed, unsigned int window, unsigned int hwindow, unsigned int desired_iter)
@@ -14,8 +18,8 @@ opt::BoxingNeighborhoodGeometryOverlap::Solution opt::BoxingNeighborhoodGeometry
     for (auto rectangle = _rectangles.cbegin(); rectangle != _rectangles.cend(); rectangle++)
     {
         //Randomly generate position
-        std::uniform_int_distribution<unsigned int> x_distribution(0, _box_size - rectangle->width + 1);
-        std::uniform_int_distribution<unsigned int> y_distribution(0, _box_size - rectangle->height + 1);
+        std::uniform_int_distribution<unsigned int> x_distribution(0, _box_size - rectangle->width);
+        std::uniform_int_distribution<unsigned int> y_distribution(0, _box_size - rectangle->height);
         BoxedRectangle boxed_rectangle(*rectangle, x_distribution(engine), y_distribution(engine), false);
 
         //Put in box
@@ -108,8 +112,13 @@ opt::BoxingNeighborhoodGeometryOverlap::SolutionContainer opt::BoxingNeighborhoo
 
 double opt::BoxingNeighborhoodGeometryOverlap::heuristic(const Solution &solution, unsigned int iter) const
 {
+    #ifdef DEBUG_OVERLAPS
+        const bool debug = iter >= std::numeric_limits<unsigned int>::max() / 2;
+        iter -= (std::numeric_limits<unsigned int>::max() / 2);
+    #endif
     const double allowed_percentage = (iter < _desired_iter) ? (static_cast<double>(_desired_iter - iter) / _desired_iter) : 0.0;
     const double percentage_penalty = 1000 * 1000 * 1000;
+    const double heuristic = energy(solution);
 
     //For every box
     double penalty = 0.0;
@@ -131,13 +140,34 @@ double opt::BoxingNeighborhoodGeometryOverlap::heuristic(const Solution &solutio
         }
     }
 
-    return energy(solution) + penalty;
+    #ifdef DEBUG_OVERLAPS
+    if (debug)
+    {
+        std::cout << "Iteration         : " << iter << std::endl;
+        std::cout << "Allowed percentage: " << allowed_percentage << std::endl;
+        std::cout << "Percentage penalty: " << percentage_penalty << std::endl;
+        std::cout << "Heuristic         : " << heuristic << std::endl;
+        std::cout << "Penalty           : " << penalty << std::endl;
+        std::cout << "Overlap area      : " << overlap_area(solution) << std::endl;
+        std::cout << std::endl;
+    }
+    #endif
+
+    return heuristic + penalty;
 }
 
-bool opt::BoxingNeighborhoodGeometryOverlap::good(const Solution &solution) const
+#ifdef DEBUG_OVERLAPS
+bool opt::BoxingNeighborhoodGeometryOverlap::good(const Solution &solution, unsigned int iter) const
+{
+    (void)heuristic(solution, std::numeric_limits<unsigned int>::max() / 2 + iter);
+    return !has_overlaps(solution);
+}
+#else
+bool opt::BoxingNeighborhoodGeometryOverlap::good(const Solution &solution, unsigned int) const
 {
     return !has_overlaps(solution);
 }
+#endif
 
 std::vector<opt::Boxing::Box> opt::BoxingNeighborhoodGeometryOverlap::get_boxes(const Solution &solution) const
 {
