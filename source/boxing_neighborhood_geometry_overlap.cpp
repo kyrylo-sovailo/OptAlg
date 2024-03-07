@@ -1,7 +1,7 @@
 #include "../include/optalg/boxing_neighborhood.h"
-#include <limits>
 #include <random>
 #ifdef DEBUG_OVERLAPS
+    #include <limits>
     #include <iostream>
 #endif
 
