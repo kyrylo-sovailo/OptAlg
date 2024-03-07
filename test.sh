@@ -3,7 +3,7 @@ SCRIPT=$(readlink -f "$0")
 SCRIPT_PATH=$(dirname "${SCRIPT}")
 TEE="tee -a log.txt"
 SMALL_NUMBER=5
-LARGE_NUMBER=0
+LARGE_NUMBER=1
 cd ${SCRIPT_PATH}/build
 
 cmake -DCMAKE_BUILD_TYPE=Release -DDEBUG_OVERLAPS=0 ..
@@ -44,21 +44,28 @@ execute()
     LARGE=$4
 
     # Compose command
+    COMMAND="./optalg_cmd --method ${METHOD}"
     if [ "${METHOD}" = "greedy" ]; then
-        METHOD="${METHOD} --metric ${SUBMETHOD}"
+        COMMAND="${COMMAND} --metric ${SUBMETHOD}"
     else
-        METHOD="${METHOD} --neighborhood ${SUBMETHOD}"
+        COMMAND="${COMMAND} --neighborhood ${SUBMETHOD}"
     fi
     if [ ${LARGE} -gt 0 ]; then
-        LARGE="--box_size 50 --item_number 500 --item_size_min 1 --item_size_max 25 --seed ${SEED}"
+        COMMAND="${COMMAND} --box_size 50 --item_number 500 --item_size_min 1 --item_size_max 25"
+        if [ "${METHOD}" = "geometry-overlap" ]; then
+            COMMAND="${COMMAND} --desired_iter 500"
+        fi
     else
-        LARGE="--box_size 10 --item_number 100 --item_size_min 1 --item_size_max 5 --seed ${SEED}"
+        COMMAND="${COMMAND} --box_size 10 --item_number 100 --item_size_min 1 --item_size_max 5"
+        if [ "${METHOD}" = "geometry-overlap" ]; then
+            COMMAND="${COMMAND} --desired_iter 100"
+        fi
     fi
-    COMAMND="./optalg_cmd --method ${METHOD} ${LARGE}"
-
+    COMMAND="${COMMAND} --seed ${SEED}"
+    
     # Execute
-    echo "${COMAMND}" | ${TEE}
-    ${COMAMND} | ${TEE}
+    echo "${COMMAND}" | ${TEE}
+    ${COMMAND} | ${TEE}
 }
 
 comment "Greedy (area)"
