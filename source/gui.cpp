@@ -43,7 +43,6 @@ namespace opt
         wxTextCtrl *_edit_time_max = nullptr;
 
         //Technical
-        wxBoxSizer *_sizer = nullptr;
         wxButton *_button_run = nullptr;
         wxButton *_button_next = nullptr;
         wxButton *_button_previous = nullptr;
@@ -407,54 +406,57 @@ void opt::Frame::_on_paint(wxPaintEvent &)
 
 opt::Frame::Frame() : wxFrame(nullptr, wxID_ANY, "Optimization algorithms")
 {
-    _sizer = new wxBoxSizer(wxVERTICAL);
+    wxBoxSizer *sizer = new wxBoxSizer(wxVERTICAL);
+    wxFlexGridSizer *vsizer = new wxFlexGridSizer(2);
+    vsizer->AddGrowableCol(1);
 	
     //Mode
     const wxString choices[] = { "Greedy (area)", "Greedy (largest side)", "Greedy (smallest side)",
         "Local search (geometry)", "Local search (order)", "Local search (geometry/overlaps)" };
-    _sizer->Add(new wxStaticText(this, wxID_ANY, "Mode:"), 0, wxEXPAND);
-    _sizer->Add(_selector_mode = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, 6, choices), 0, wxEXPAND);
+    vsizer->Add(new wxStaticText(this, wxID_ANY, "Mode:"), 0, wxEXPAND);
+    vsizer->Add(_selector_mode = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, 6, choices), 0, wxEXPAND);
     _selector_mode->SetSelection(0);
 
     //Problem
-    _sizer->Add(new wxStaticText(this, wxID_ANY, "Box size:"), 0, wxEXPAND);
-    _sizer->Add(_edit_box_size = new wxTextCtrl(this, wxID_ANY, "10"), 0, wxEXPAND);
-    _sizer->Add(new wxStaticText(this, wxID_ANY, "Item number:"), 0, wxEXPAND);
-    _sizer->Add(_edit_item_number = new wxTextCtrl(this, wxID_ANY, "100"), 0, wxEXPAND);
-    _sizer->Add(new wxStaticText(this, wxID_ANY, "Minimal item size:"), 0, wxEXPAND);
-    _sizer->Add(_edit_item_size_min = new wxTextCtrl(this, wxID_ANY, "1"), 0, wxEXPAND);
-    _sizer->Add(new wxStaticText(this, wxID_ANY, "Maximal item size:"), 0, wxEXPAND);
-    _sizer->Add(_edit_item_size_max = new wxTextCtrl(this, wxID_ANY, "5"), 0, wxEXPAND);
-    _sizer->Add(new wxStaticText(this, wxID_ANY, "Seed:"), 0, wxEXPAND);
-    _sizer->Add(_edit_seed = new wxTextCtrl(this, wxID_ANY, "0"), 0, wxEXPAND);
-    _sizer->Add(new wxStaticText(this, wxID_ANY, "Window size:"), 0, wxEXPAND);
-    _sizer->Add(_edit_window = new wxTextCtrl(this, wxID_ANY, "1"), 0, wxEXPAND);
-    _sizer->Add(new wxStaticText(this, wxID_ANY, "Vertical window size:"), 0, wxEXPAND);
-    _sizer->Add(_edit_hwindow = new wxTextCtrl(this, wxID_ANY, "0"), 0, wxEXPAND);
-    _sizer->Add(new wxStaticText(this, wxID_ANY, "Desired iteration:"), 0, wxEXPAND);
-    _sizer->Add(_edit_desired_iter = new wxTextCtrl(this, wxID_ANY, "100"), 0, wxEXPAND);
+    vsizer->Add(new wxStaticText(this, wxID_ANY, "Box size:"), 0);
+    vsizer->Add(_edit_box_size = new wxTextCtrl(this, wxID_ANY, "10"), 1, wxEXPAND);
+    vsizer->Add(new wxStaticText(this, wxID_ANY, "Item number:"), 0);
+    vsizer->Add(_edit_item_number = new wxTextCtrl(this, wxID_ANY, "100"), 1, wxEXPAND);
+    vsizer->Add(new wxStaticText(this, wxID_ANY, "Minimal item size:"), 0);
+    vsizer->Add(_edit_item_size_min = new wxTextCtrl(this, wxID_ANY, "1"), 1, wxEXPAND);
+    vsizer->Add(new wxStaticText(this, wxID_ANY, "Maximal item size:"), 0);
+    vsizer->Add(_edit_item_size_max = new wxTextCtrl(this, wxID_ANY, "5"), 1, wxEXPAND);
+    vsizer->Add(new wxStaticText(this, wxID_ANY, "Seed:"), 0);
+    vsizer->Add(_edit_seed = new wxTextCtrl(this, wxID_ANY, "0"), 1, wxEXPAND);
+    vsizer->Add(new wxStaticText(this, wxID_ANY, "Window size:"), 0);
+    vsizer->Add(_edit_window = new wxTextCtrl(this, wxID_ANY, "1"), 1, wxEXPAND);
+    vsizer->Add(new wxStaticText(this, wxID_ANY, "Vertical window size:"), 0);
+    vsizer->Add(_edit_hwindow = new wxTextCtrl(this, wxID_ANY, "0"), 1, wxEXPAND);
+    vsizer->Add(new wxStaticText(this, wxID_ANY, "Desired iteration:"), 0);
+    vsizer->Add(_edit_desired_iter = new wxTextCtrl(this, wxID_ANY, "100"), 1, wxEXPAND);
 
     //Solution
-    _sizer->Add(new wxStaticText(this, wxID_ANY, "Iteration limit:"), 0, wxEXPAND);
-    _sizer->Add(_edit_iter_max = new wxTextCtrl(this, wxID_ANY, "inf"), 0, wxEXPAND);
-    _sizer->Add(new wxStaticText(this, wxID_ANY, "Time limit, seconds:"), 0, wxEXPAND);
-    _sizer->Add(_edit_time_max = new wxTextCtrl(this, wxID_ANY, "inf"), 0, wxEXPAND);
+    vsizer->Add(new wxStaticText(this, wxID_ANY, "Iteration limit:"), 0);
+    vsizer->Add(_edit_iter_max = new wxTextCtrl(this, wxID_ANY, "inf"), 0, wxEXPAND);
+    vsizer->Add(new wxStaticText(this, wxID_ANY, "Time limit, seconds:"), 0);
+    vsizer->Add(_edit_time_max = new wxTextCtrl(this, wxID_ANY, "inf"), 0, wxEXPAND);
 
     //Technical
-    _sizer->Add(_button_run = new wxButton(this, wxID_ANY, "Run"), 0, wxEXPAND);
-    _sizer->Add(_button_next = new wxButton(this, wxID_ANY, "Next"), 0, wxEXPAND);
-    _sizer->Add(_button_previous = new wxButton(this, wxID_ANY, "Previous"), 0, wxEXPAND);
-    _sizer->Add(_panel_display = new wxPanel(this, wxID_ANY), 1, wxEXPAND);
-    _sizer->Add(_scroll_scroll = new wxScrollBar(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxSB_HORIZONTAL), 0, wxEXPAND);
-    _sizer->Add(_text_iteration = new wxStaticText(this, wxID_ANY, "Iteration: N/A"), 0, wxEXPAND);
-    _sizer->Add(_text_time = new wxStaticText(this, wxID_ANY, "Time: N/A"), 0, wxEXPAND);
+    sizer->Add(vsizer, 1, wxEXPAND);
+    sizer->Add(_button_run = new wxButton(this, wxID_ANY, "Run"), 0, wxEXPAND);
+    sizer->Add(_button_next = new wxButton(this, wxID_ANY, "Next"), 0, wxEXPAND);
+    sizer->Add(_button_previous = new wxButton(this, wxID_ANY, "Previous"), 0, wxEXPAND);
+    sizer->Add(_panel_display = new wxPanel(this, wxID_ANY), 1, wxEXPAND);
+    sizer->Add(_scroll_scroll = new wxScrollBar(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxSB_HORIZONTAL), 0, wxEXPAND);
+    sizer->Add(_text_iteration = new wxStaticText(this, wxID_ANY, "Iteration: N/A"), 0, wxEXPAND);
+    sizer->Add(_text_time = new wxStaticText(this, wxID_ANY, "Time: N/A"), 0, wxEXPAND);
     Bind(wxEVT_BUTTON, &Frame::_on_run, this, _button_run->GetId());
     Bind(wxEVT_BUTTON, &Frame::_on_next, this, _button_next->GetId());
     Bind(wxEVT_BUTTON, &Frame::_on_previous, this, _button_previous->GetId());
     _panel_display->Bind(wxEVT_PAINT, &Frame::_on_paint, this, _panel_display->GetId());
     Bind(wxEVT_SCROLL_CHANGED, &Frame::_on_scroll, this, _scroll_scroll->GetId());
 	
-    SetSizer(_sizer);
+    SetSizer(sizer);
     SetAutoLayout(true);
     wxDisplay display(0u);
     SetSize(2 * display.GetClientArea().GetSize() / 3);
