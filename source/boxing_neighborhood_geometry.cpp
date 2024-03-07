@@ -50,8 +50,9 @@ opt::BoxingNeighborhoodGeometry::SolutionContainer opt::BoxingNeighborhoodGeomet
         ((_hwindow != 0) ? (box_j <= begin_box_i + _hwindow) : true) && box_j < solution.size();
         box_j++)
     {
-        images[_hwindow + box_j - begin_box_i] = _image_create();
-        _image_add_all(&images[_hwindow + box_j - begin_box_i], solution[box_j]);
+        BoxImage &dest_image = (_hwindow != 0) ? images[_hwindow + box_j - begin_box_i] : images[box_j];
+        dest_image = _image_create();
+        _image_add_all(&dest_image, solution[box_j]);
     }
 
     //For every box

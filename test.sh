@@ -52,12 +52,12 @@ execute()
     fi
     if [ ${LARGE} -gt 0 ]; then
         COMMAND="${COMMAND} --box_size 50 --item_number 500 --item_size_min 1 --item_size_max 25"
-        if [ "${METHOD}" = "geometry-overlap" ]; then
+        if [ "${SUBMETHOD}" = "geometry-overlap" ]; then
             COMMAND="${COMMAND} --desired_iter 500"
         fi
     else
         COMMAND="${COMMAND} --box_size 10 --item_number 100 --item_size_min 1 --item_size_max 5"
-        if [ "${METHOD}" = "geometry-overlap" ]; then
+        if [ "${SUBMETHOD}" = "geometry-overlap" ]; then
             COMMAND="${COMMAND} --desired_iter 100"
         fi
     fi
