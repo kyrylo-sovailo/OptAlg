@@ -76,6 +76,7 @@ int _main(int argc, char **argv)
     //Solution
     unsigned int iter_max = std::numeric_limits<unsigned int>::max();
     double time_max = std::numeric_limits<double>::infinity();
+    bool return_good = true;
     
     //Parse
     for (int i = 1;;)
@@ -100,6 +101,7 @@ int _main(int argc, char **argv)
         
         else if (strcmp(argument, "--iter_max") == 0) iter_max = parse_uint(value);
         else if (strcmp(argument, "--time_max") == 0) time_max = parse_double(value);
+        else if (strcmp(argument, "--return_good") == 0) return_good = parse_bool(value);
         else throw std::runtime_error("Invalid argument name");
         i += 2;
     }
@@ -125,7 +127,7 @@ int _main(int argc, char **argv)
         Problem *problem = new Problem(box_size, item_number, item_size_min, item_size_max, seed, window, hwindow);
         boxing.reset(problem);
         std::vector<Problem::Solution> log;
-        Problem::Solution solution = opt::neighborhood(*problem, iter_max, time_max, &log, &timer);
+        Problem::Solution solution = opt::neighborhood(*problem, iter_max, time_max, return_good, &log, &timer);
         boxes = problem->get_boxes(solution);
         iteration_count = log.size() - 1;
     }
@@ -135,7 +137,7 @@ int _main(int argc, char **argv)
         Problem *problem = new Problem(box_size, item_number, item_size_min, item_size_max, seed, window);
         boxing.reset(problem);
         std::vector<Problem::Solution> log;
-        Problem::Solution solution = opt::neighborhood(*problem, iter_max, time_max, &log, &timer);
+        Problem::Solution solution = opt::neighborhood(*problem, iter_max, time_max, return_good, &log, &timer);
         boxes = problem->get_boxes(solution);
         iteration_count = log.size() - 1;
     }
@@ -145,7 +147,7 @@ int _main(int argc, char **argv)
         Problem *problem = new Problem(box_size, item_number, item_size_min, item_size_max, seed, window, hwindow, desired_iter);
         boxing.reset(problem);
         std::vector<Problem::Solution> log;
-        Problem::Solution solution = opt::neighborhood(*problem, iter_max, time_max, &log, &timer);
+        Problem::Solution solution = opt::neighborhood(*problem, iter_max, time_max, return_good, &log, &timer);
         boxes = problem->get_boxes(solution);
         iteration_count = log.size() - 1;
     }

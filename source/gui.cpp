@@ -41,6 +41,7 @@ namespace opt
         //Solution
         wxTextCtrl *_edit_iter_max = nullptr;
         wxTextCtrl *_edit_time_max = nullptr;
+        wxCheckBox *_check_return_good = nullptr;
 
         //Technical
         wxButton *_button_run = nullptr;
@@ -272,6 +273,7 @@ void opt::Frame::_on_run(wxCommandEvent &)
         //Solution
         const unsigned int iter_max = _parse_uint(_edit_iter_max, "Invalid iteration limit");
         const double time_max = _parse_double(_edit_time_max, "Invalid time limit");
+        const bool return_good = _check_return_good->GetValue();
 
         double timer;
         if (mode >= 0 && mode <= 2)
@@ -294,7 +296,7 @@ void opt::Frame::_on_run(wxCommandEvent &)
             Problem *problem = new Problem(box_size, item_number, item_size_min, item_size_max, seed, window, hwindow);
             _boxing.reset(problem);
             std::vector<Problem::Solution> log;
-            Problem::Solution solution = neighborhood(*problem, iter_max, time_max, &log, &timer);
+            Problem::Solution solution = neighborhood(*problem, iter_max, time_max, return_good, &log, &timer);
             _log.resize(log.size());
             for (unsigned int i = 0; i < log.size(); i++) _log[i] = problem->get_boxes(log[i]);
         }
@@ -304,7 +306,7 @@ void opt::Frame::_on_run(wxCommandEvent &)
             Problem *problem = new Problem(box_size, item_number, item_size_min, item_size_max, seed, window);
             _boxing.reset(problem);
             std::vector<Problem::Solution> log;
-            Problem::Solution solution = neighborhood(*problem, iter_max, time_max, &log, &timer);
+            Problem::Solution solution = neighborhood(*problem, iter_max, time_max, return_good, &log, &timer);
             _log.resize(log.size());
             _log_order.resize(log.size());
             for (unsigned int i = 0; i < log.size(); i++) { _log[i] = problem->get_boxes(log[i]); _log_order[i] = log[i]; }
@@ -315,14 +317,14 @@ void opt::Frame::_on_run(wxCommandEvent &)
             Problem *problem = new Problem(box_size, item_number, item_size_min, item_size_max, seed, window, hwindow, desired_iter);
             _boxing.reset(problem);
             std::vector<Problem::Solution> log;
-            Problem::Solution solution = neighborhood(*problem, iter_max, time_max, &log, &timer);
+            Problem::Solution solution = neighborhood(*problem, iter_max, time_max, return_good, &log, &timer);
             _log.resize(log.size());
             for (unsigned int i = 0; i < log.size(); i++) _log[i] = problem->get_boxes(log[i]);
         }
         _mode = mode;
         _iteration = _log.size() - 1;
         _scroll_scroll->SetScrollbar(_iteration, _log.size() / 10, _log.size(), 10);
-        _text_iteration->SetLabel("Iteration: " + std::to_string(_iteration) + "/" + std::to_string(_log.size()));
+        _text_iteration->SetLabel("Iteration: " + std::to_string(_iteration + 1) + "/" + std::to_string(_log.size()));
         _text_time->SetLabel("Time: " + std::to_string(timer));
     }
     catch (const std::exception &e)
@@ -412,15 +414,6 @@ void opt::Frame::_on_paint(wxPaintEvent &)
             dc.DrawRectangle(
                 local_x + rectangle_x_begin, local_y + box_size - rectangle_y_end,
                 rectangle_x_end - rectangle_x_begin, rectangle_y_end - rectangle_y_begin);
-        }
-
-        //Draw lines
-        for (auto rectangle = boxes[box_i].rectangles.cbegin(); rectangle != boxes[box_i].rectangles.cend(); rectangle++)
-        {
-            const unsigned int rectangle_x_begin = box_size * rectangle->x / _boxing->box_size();
-            const unsigned int rectangle_x_end = box_size * rectangle->x_end() / _boxing->box_size();
-            const unsigned int rectangle_y_begin = box_size * rectangle->y / _boxing->box_size();
-            const unsigned int rectangle_y_end = box_size * rectangle->y_end() / _boxing->box_size();
             dc.DrawLine(
                 local_x + rectangle_x_begin, local_y + box_size - rectangle_y_begin,
                 local_x + rectangle_x_begin, local_y + box_size - rectangle_y_end);
@@ -487,6 +480,9 @@ opt::Frame::Frame() : wxFrame(nullptr, wxID_ANY, "Optimization algorithms")
     vsizer->Add(_edit_iter_max = new wxTextCtrl(this, wxID_ANY, "inf"), 0, wxEXPAND);
     vsizer->Add(new wxStaticText(this, wxID_ANY, "Time limit, seconds:"), 0);
     vsizer->Add(_edit_time_max = new wxTextCtrl(this, wxID_ANY, "inf"), 0, wxEXPAND);
+    vsizer->Add(new wxStaticText(this, wxID_ANY, "Good solution:"), 0);
+    vsizer->Add(_check_return_good = new wxCheckBox(this, wxID_ANY, ""), 0, wxEXPAND);
+    _check_return_good->SetValue(true);
 
     //Technical
     sizer->Add(vsizer, 0, wxEXPAND);

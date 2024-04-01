@@ -26,6 +26,7 @@ namespace opt
         Problem &problem,
         unsigned int iter_max,
         double time_max,
+        bool return_good,
         std::vector<typename Problem::Solution> *log,
         double *timer)
     {        
@@ -119,7 +120,7 @@ namespace opt
             }
             
             //Exit
-            if (problem.good(solution, iter))
+            if (!return_good || problem.good(solution, iter))                   //If solution is good or allowed to return bad
             {
                 if (!std::isfinite(best_neighbor_heuristic)) break;             //No better neighbor
                 else if (iter >= iter_max) break;                               //Maximum iteration reached
