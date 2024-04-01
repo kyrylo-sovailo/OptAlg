@@ -73,6 +73,8 @@ namespace opt
         static double _parse_double(const wxTextCtrl *text, const char *error_message);
         static std::set<const Boxing::Rectangle*> _get_changes(const std::vector<Boxing::Box> &a, const std::vector<Boxing::Box> &b);
         static std::set<const Boxing::Rectangle*> _get_changes(const BoxingNeighborhoodOrder::Solution &a, const BoxingNeighborhoodOrder::Solution &b);
+        void _draw_rectangle(wxDC *dc ,const Boxing::BoxedRectangle *rectangle,
+            const unsigned int box_size, const unsigned int local_x, unsigned int local_y);
 
         //Events
         void _on_run(wxCommandEvent &event);
@@ -262,6 +264,30 @@ std::set<const opt::Boxing::Rectangle*> opt::Frame::_get_changes(const BoxingNei
     return changes;
 }
 
+void opt::Frame::_draw_rectangle(wxDC *dc ,const Boxing::BoxedRectangle *rectangle,
+    const unsigned int box_size, const unsigned int local_x, unsigned int local_y)
+{
+    const unsigned int rectangle_x_begin = box_size * rectangle->x / _boxing->box_size();
+    const unsigned int rectangle_x_end = box_size * rectangle->x_end() / _boxing->box_size();
+    const unsigned int rectangle_y_begin = box_size * rectangle->y / _boxing->box_size();
+    const unsigned int rectangle_y_end = box_size * rectangle->y_end() / _boxing->box_size();
+    dc->DrawRectangle(
+        local_x + rectangle_x_begin, local_y + box_size - rectangle_y_end,
+        rectangle_x_end - rectangle_x_begin, rectangle_y_end - rectangle_y_begin);
+    dc->DrawLine(
+        local_x + rectangle_x_begin, local_y + box_size - rectangle_y_begin,
+        local_x + rectangle_x_begin, local_y + box_size - rectangle_y_end);
+    dc->DrawLine(
+        local_x + rectangle_x_begin, local_y + box_size - rectangle_y_end,
+        local_x + rectangle_x_end, local_y + box_size - rectangle_y_end);
+    dc->DrawLine(
+        local_x + rectangle_x_end, local_y + box_size - rectangle_y_end,
+        local_x + rectangle_x_end, local_y + box_size - rectangle_y_begin);
+    dc->DrawLine(
+        local_x + rectangle_x_end, local_y + box_size - rectangle_y_begin,
+        local_x + rectangle_x_begin, local_y + box_size - rectangle_y_begin);
+}
+
 void opt::Frame::_on_run(wxCommandEvent &)
 {
     try
@@ -391,9 +417,23 @@ void opt::Frame::_on_paint(wxPaintEvent &)
     const unsigned int box_offset_y = (box_margin_height - box_size) / 2;
 
     //Find selection
-    std::set<const Boxing::Rectangle*> selection;
-    if (_iteration > 0 && _mode == Mode::neighborhood_order) selection = _get_changes(_log_order[_iteration - 1], _log_order[_iteration]);
-    else if (_iteration > 0 && _mode != Mode::neighborhood_order) selection = _get_changes(_log[_iteration - 1], _log[_iteration]);
+    std::set<const Boxing::Rectangle*> yellow, blue;
+    if (_mode == Mode::neighborhood_order)
+    {
+        //Changes between previous and current are yellow
+        if (_iteration > 0) yellow = _get_changes(_log_order[_iteration - 1], _log_order[_iteration]);
+        //Changes between current and next are blue
+        if (_iteration + 1 < _log_order.size()) blue = _get_changes(_log_order[_iteration], _log_order[_iteration + 1]);
+    }
+    else
+    {
+        //Changes between previous and current are yellow
+        if (_iteration > 0) yellow = _get_changes(_log[_iteration - 1], _log[_iteration]);
+        if (yellow.size() > 1) yellow.erase(++yellow.cbegin(), yellow.cend());
+        //Changes between current and next are blue
+        if (_iteration + 1 < _log.size()) blue = _get_changes(_log[_iteration], _log[_iteration + 1]);
+        if (blue.size() > 1) blue.erase(++blue.cbegin(), blue.cend());
+    }
 
     //Clear background
     dc.SetBackground(*wxWHITE_BRUSH);
@@ -409,31 +449,33 @@ void opt::Frame::_on_paint(wxPaintEvent &)
         const unsigned int local_x = box_margin_width * boxes_x + box_offset_x;
         const unsigned int local_y = box_margin_height * boxes_y + box_offset_y;
 
-        //Draw rectangles
+        //Draw grey rectangles
+        dc.SetBrush(*wxGREY_BRUSH);
         for (auto rectangle = boxes[box_i].rectangles.cbegin(); rectangle != boxes[box_i].rectangles.cend(); rectangle++)
         {
-            if (selection.count(rectangle->rectangle) == 0) dc.SetBrush(*wxGREY_BRUSH);
-            else if (*selection.begin() == rectangle->rectangle) dc.SetBrush(*wxYELLOW_BRUSH);
-            else dc.SetBrush(*wxBLUE_BRUSH);
-            const unsigned int rectangle_x_begin = box_size * rectangle->x / _boxing->box_size();
-            const unsigned int rectangle_x_end = box_size * rectangle->x_end() / _boxing->box_size();
-            const unsigned int rectangle_y_begin = box_size * rectangle->y / _boxing->box_size();
-            const unsigned int rectangle_y_end = box_size * rectangle->y_end() / _boxing->box_size();
-            dc.DrawRectangle(
-                local_x + rectangle_x_begin, local_y + box_size - rectangle_y_end,
-                rectangle_x_end - rectangle_x_begin, rectangle_y_end - rectangle_y_begin);
-            dc.DrawLine(
-                local_x + rectangle_x_begin, local_y + box_size - rectangle_y_begin,
-                local_x + rectangle_x_begin, local_y + box_size - rectangle_y_end);
-            dc.DrawLine(
-                local_x + rectangle_x_begin, local_y + box_size - rectangle_y_end,
-                local_x + rectangle_x_end, local_y + box_size - rectangle_y_end);
-            dc.DrawLine(
-                local_x + rectangle_x_end, local_y + box_size - rectangle_y_end,
-                local_x + rectangle_x_end, local_y + box_size - rectangle_y_begin);
-            dc.DrawLine(
-                local_x + rectangle_x_end, local_y + box_size - rectangle_y_begin,
-                local_x + rectangle_x_begin, local_y + box_size - rectangle_y_begin);
+            if (yellow.count(rectangle->rectangle) == 0 && blue.count(rectangle->rectangle) == 0) _draw_rectangle(&dc, &(*rectangle), box_size, local_x, local_y);
+        }   
+
+        //Draw blue rectangles
+        dc.SetBrush(*wxBLUE_BRUSH);
+        for (auto rectangle = boxes[box_i].rectangles.cbegin(); rectangle != boxes[box_i].rectangles.cend(); rectangle++)
+        {
+            if (yellow.count(rectangle->rectangle) == 0 && blue.count(rectangle->rectangle) > 0) _draw_rectangle(&dc, &(*rectangle), box_size, local_x, local_y);
+        }
+
+        //Draw yellow rectangles
+        dc.SetBrush(*wxYELLOW_BRUSH);
+        for (auto rectangle = boxes[box_i].rectangles.cbegin(); rectangle != boxes[box_i].rectangles.cend(); rectangle++)
+        {
+            if (yellow.count(rectangle->rectangle) > 0 && blue.count(rectangle->rectangle) == 0) _draw_rectangle(&dc, &(*rectangle), box_size, local_x, local_y);
+        }
+
+
+        //Draw green rectangles
+        dc.SetBrush(*wxGREEN_BRUSH);
+        for (auto rectangle = boxes[box_i].rectangles.cbegin(); rectangle != boxes[box_i].rectangles.cend(); rectangle++)
+        {
+            if (yellow.count(rectangle->rectangle) > 0 && blue.count(rectangle->rectangle) > 0) _draw_rectangle(&dc, &(*rectangle), box_size, local_x, local_y);
         }
 
         //Draw border
@@ -485,10 +527,10 @@ opt::Frame::Frame() : wxFrame(nullptr, wxID_ANY, "Optimization algorithms")
     vsizer->Add(new wxStaticText(this, wxID_ANY, "Iteration limit:"), 0);
     vsizer->Add(_edit_iter_max = new wxTextCtrl(this, wxID_ANY, "inf"), 0, wxEXPAND);
     vsizer->Add(new wxStaticText(this, wxID_ANY, "Time limit, seconds:"), 0);
-    vsizer->Add(_edit_time_max = new wxTextCtrl(this, wxID_ANY, "inf"), 0, wxEXPAND);
+    vsizer->Add(_edit_time_max = new wxTextCtrl(this, wxID_ANY, "10"), 0, wxEXPAND);
     vsizer->Add(new wxStaticText(this, wxID_ANY, "Good solution:"), 0);
     vsizer->Add(_check_return_good = new wxCheckBox(this, wxID_ANY, ""), 0, wxEXPAND);
-    _check_return_good->SetValue(true);
+    _check_return_good->SetValue(false);
 
     //Technical
     sizer->Add(vsizer, 0, wxEXPAND);
