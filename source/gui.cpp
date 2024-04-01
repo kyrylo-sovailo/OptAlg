@@ -22,6 +22,15 @@
 
 namespace opt
 {
+    enum class Mode
+    {
+        greedy_area, greedy_max, greedy_min,
+        neighborhood_geometry, neighborhood_order, neighborhood_geometry_overlap
+    };
+
+    const wxString mode_strings[] = { "Greedy (area)", "Greedy (largest side)", "Greedy (smallest side)",
+    "Local search (geometry)", "Local search (order)", "Local search (geometry/overlaps)" };
+
     class Frame : public wxFrame
     {
     private:
@@ -53,7 +62,7 @@ namespace opt
         wxStaticText *_text_time = nullptr;
 
         //Logic
-        int _mode;                                                  //Solving mode, 0 to 5
+        Mode _mode;                                                 //Operating mode
         std::unique_ptr<opt::Boxing> _boxing;                       //Boxing problem
         std::vector<std::vector<Boxing::Box>> _log;                 //Log transformed to boxes
         std::vector<BoxingNeighborhoodOrder::Solution> _log_order;  //Log specific to order neighborhood
@@ -257,8 +266,7 @@ void opt::Frame::_on_run(wxCommandEvent &)
 {
     try
     {
-        int mode = _selector_mode->GetSelection();
-        if (mode < 0 || mode > 5) throw std::runtime_error("Invalid mode");
+        Mode mode = static_cast<Mode>(_selector_mode->GetSelection());
 
         //Problem
         const unsigned int box_size = _parse_uint(_edit_box_size, "Invalid box size");
@@ -276,11 +284,11 @@ void opt::Frame::_on_run(wxCommandEvent &)
         const bool return_good = _check_return_good->GetValue();
 
         double timer;
-        if (mode >= 0 && mode <= 2)
+        if (mode == Mode::greedy_area || mode == Mode::greedy_max || mode == Mode::greedy_min)
         {
             BoxingGreedy::Metric metric;
-            if (mode == 0) metric = BoxingGreedy::Metric::area;
-            else if (mode == 1) metric = BoxingGreedy::Metric::max_size;
+            if (mode == Mode::greedy_area) metric = BoxingGreedy::Metric::area;
+            else if (mode == Mode::greedy_max) metric = BoxingGreedy::Metric::max_size;
             else metric = BoxingGreedy::Metric::min_size;
             typedef BoxingGreedy Problem;
             Problem *problem = new Problem(box_size, item_number, item_size_min, item_size_max, seed, metric);
@@ -290,7 +298,7 @@ void opt::Frame::_on_run(wxCommandEvent &)
             _log.resize(log.size());
             for (unsigned int i = 0; i < log.size(); i++) _log[i] = problem->get_boxes(log[i]);
         }
-        else if (mode == 3)
+        else if (mode == Mode::neighborhood_geometry)
         {
             typedef BoxingNeighborhoodGeometry Problem;
             Problem *problem = new Problem(box_size, item_number, item_size_min, item_size_max, seed, window, hwindow);
@@ -300,7 +308,7 @@ void opt::Frame::_on_run(wxCommandEvent &)
             _log.resize(log.size());
             for (unsigned int i = 0; i < log.size(); i++) _log[i] = problem->get_boxes(log[i]);
         }
-        else if (mode == 4)
+        else if (mode == Mode::neighborhood_order)
         {
             typedef BoxingNeighborhoodOrder Problem;
             Problem *problem = new Problem(box_size, item_number, item_size_min, item_size_max, seed, window);
@@ -339,7 +347,7 @@ void opt::Frame::_on_next(wxCommandEvent &)
     {
         _iteration++;
         _scroll_scroll->SetScrollbar(_iteration, _log.size() / 10, _log.size(), 10);
-        _text_iteration->SetLabel("Iteration: " + std::to_string(_iteration) + "/" + std::to_string(_log.size()));
+        _text_iteration->SetLabel("Iteration: " + std::to_string(_iteration + 1) + "/" + std::to_string(_log.size()));
         _panel_display->Refresh();
     }
 }
@@ -350,7 +358,7 @@ void opt::Frame::_on_previous(wxCommandEvent &)
     {
         _iteration--;
         _scroll_scroll->SetScrollbar(_iteration, _log.size() / 10, _log.size(), 10);
-        _text_iteration->SetLabel("Iteration: " + std::to_string(_iteration) + "/" + std::to_string(_log.size()));
+        _text_iteration->SetLabel("Iteration: " + std::to_string(_iteration + 1) + "/" + std::to_string(_log.size()));
         _panel_display->Refresh();
     }
 }
@@ -359,7 +367,7 @@ void opt::Frame::_on_scroll(wxScrollEvent &)
 {
     _iteration = _scroll_scroll->GetScrollPos(wxHORIZONTAL);
     if (_iteration > _log.size() - 1) _iteration = _log.size() - 1;
-    _text_iteration->SetLabel("Iteration: " + std::to_string(_iteration) + "/" + std::to_string(_log.size()));
+    _text_iteration->SetLabel("Iteration: " + std::to_string(_iteration + 1) + "/" + std::to_string(_log.size()));
     _panel_display->Refresh();
 }
 
@@ -384,8 +392,8 @@ void opt::Frame::_on_paint(wxPaintEvent &)
 
     //Find selection
     std::set<const Boxing::Rectangle*> selection;
-    if (_iteration > 0 && _mode == 4) selection = _get_changes(_log_order[_iteration - 1], _log_order[_iteration]);
-    else if (_iteration > 0 && _mode != 4) selection = _get_changes(_log[_iteration - 1], _log[_iteration]);
+    if (_iteration > 0 && _mode == Mode::neighborhood_order) selection = _get_changes(_log_order[_iteration - 1], _log_order[_iteration]);
+    else if (_iteration > 0 && _mode != Mode::neighborhood_order) selection = _get_changes(_log[_iteration - 1], _log[_iteration]);
 
     //Clear background
     dc.SetBackground(*wxWHITE_BRUSH);
@@ -451,10 +459,8 @@ opt::Frame::Frame() : wxFrame(nullptr, wxID_ANY, "Optimization algorithms")
     vsizer->AddGrowableCol(1);
 	
     //Mode
-    const wxString choices[] = { "Greedy (area)", "Greedy (largest side)", "Greedy (smallest side)",
-        "Local search (geometry)", "Local search (order)", "Local search (geometry/overlaps)" };
     vsizer->Add(new wxStaticText(this, wxID_ANY, "Mode:"), 0, wxEXPAND);
-    vsizer->Add(_selector_mode = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, 6, choices), 0, wxEXPAND);
+    vsizer->Add(_selector_mode = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, 6, mode_strings), 0, wxEXPAND);
     _selector_mode->SetSelection(0);
 
     //Problem
