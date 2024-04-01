@@ -1,0 +1,195 @@
+#################
+# Greedy (area) #
+#################
+./optalg_cmd --method greedy --metric area --box_size 10 --item_number 100 --item_size_min 1 --item_size_max 5 --seed 1
+Time      : 0.002031s
+Boxes     : 10
+Iterations: 100
+Occupation: 92.2%
+./optalg_cmd --method greedy --metric area --box_size 10 --item_number 100 --item_size_min 1 --item_size_max 5 --seed 2
+Time      : 0.001965s
+Boxes     : 9
+Iterations: 100
+Occupation: 98.889%
+./optalg_cmd --method greedy --metric area --box_size 10 --item_number 100 --item_size_min 1 --item_size_max 5 --seed 3
+Time      : 0.00194s
+Boxes     : 10
+Iterations: 100
+Occupation: 92.8%
+./optalg_cmd --method greedy --metric area --box_size 10 --item_number 100 --item_size_min 1 --item_size_max 5 --seed 4
+Time      : 0.001902s
+Boxes     : 9
+Iterations: 100
+Occupation: 97.889%
+./optalg_cmd --method greedy --metric area --box_size 10 --item_number 100 --item_size_min 1 --item_size_max 5 --seed 5
+Time      : 0.001931s
+Boxes     : 9
+Iterations: 100
+Occupation: 94.667%
+./optalg_cmd --method greedy --metric area --box_size 50 --item_number 500 --item_size_min 1 --item_size_max 25 --seed 1
+Time      : 0.60722s
+Boxes     : 35
+Iterations: 500
+Occupation: 96.705%
+#####################
+# Greedy (max size) #
+#####################
+./optalg_cmd --method greedy --metric max_size --box_size 10 --item_number 100 --item_size_min 1 --item_size_max 5 --seed 1
+Time      : 0.001938s
+Boxes     : 10
+Iterations: 100
+Occupation: 92.2%
+./optalg_cmd --method greedy --metric max_size --box_size 10 --item_number 100 --item_size_min 1 --item_size_max 5 --seed 2
+Time      : 0.001718s
+Boxes     : 9
+Iterations: 100
+Occupation: 98.889%
+./optalg_cmd --method greedy --metric max_size --box_size 10 --item_number 100 --item_size_min 1 --item_size_max 5 --seed 3
+Time      : 0.001879s
+Boxes     : 10
+Iterations: 100
+Occupation: 92.8%
+./optalg_cmd --method greedy --metric max_size --box_size 10 --item_number 100 --item_size_min 1 --item_size_max 5 --seed 4
+Time      : 0.001692s
+Boxes     : 9
+Iterations: 100
+Occupation: 97.889%
+./optalg_cmd --method greedy --metric max_size --box_size 10 --item_number 100 --item_size_min 1 --item_size_max 5 --seed 5
+Time      : 0.001755s
+Boxes     : 9
+Iterations: 100
+Occupation: 94.667%
+./optalg_cmd --method greedy --metric max_size --box_size 50 --item_number 500 --item_size_min 1 --item_size_max 25 --seed 1
+Time      : 0.52629s
+Boxes     : 35
+Iterations: 500
+Occupation: 96.705%
+#####################
+# Greedy (min size) #
+#####################
+./optalg_cmd --method greedy --metric min_size --box_size 10 --item_number 100 --item_size_min 1 --item_size_max 5 --seed 1
+Time      : 0.001671s
+Boxes     : 10
+Iterations: 100
+Occupation: 92.2%
+./optalg_cmd --method greedy --metric min_size --box_size 10 --item_number 100 --item_size_min 1 --item_size_max 5 --seed 2
+Time      : 0.001809s
+Boxes     : 9
+Iterations: 100
+Occupation: 98.889%
+./optalg_cmd --method greedy --metric min_size --box_size 10 --item_number 100 --item_size_min 1 --item_size_max 5 --seed 3
+Time      : 0.001696s
+Boxes     : 10
+Iterations: 100
+Occupation: 92.8%
+./optalg_cmd --method greedy --metric min_size --box_size 10 --item_number 100 --item_size_min 1 --item_size_max 5 --seed 4
+Time      : 0.001757s
+Boxes     : 9
+Iterations: 100
+Occupation: 97.889%
+./optalg_cmd --method greedy --metric min_size --box_size 10 --item_number 100 --item_size_min 1 --item_size_max 5 --seed 5
+Time      : 0.001704s
+Boxes     : 9
+Iterations: 100
+Occupation: 94.667%
+./optalg_cmd --method greedy --metric min_size --box_size 50 --item_number 500 --item_size_min 1 --item_size_max 25 --seed 1
+Time      : 0.53172s
+Boxes     : 35
+Iterations: 500
+Occupation: 96.705%
+###########################
+# Neighborhood (geometry) #
+###########################
+./optalg_cmd --method neighborhood --neighborhood geometry --box_size 10 --item_number 100 --item_size_min 1 --item_size_max 5 --seed 1
+Time      : 9.2929s
+Boxes     : 14
+Iterations: 172
+Occupation: 65.857%
+./optalg_cmd --method neighborhood --neighborhood geometry --box_size 10 --item_number 100 --item_size_min 1 --item_size_max 5 --seed 2
+Time      : 9.9087s
+Boxes     : 12
+Iterations: 143
+Occupation: 74.167%
+./optalg_cmd --method neighborhood --neighborhood geometry --box_size 10 --item_number 100 --item_size_min 1 --item_size_max 5 --seed 3
+Time      : 6.7495s
+Boxes     : 13
+Iterations: 154
+Occupation: 71.385%
+./optalg_cmd --method neighborhood --neighborhood geometry --box_size 10 --item_number 100 --item_size_min 1 --item_size_max 5 --seed 4
+Time      : 7.7077s
+Boxes     : 12
+Iterations: 136
+Occupation: 73.417%
+./optalg_cmd --method neighborhood --neighborhood geometry --box_size 10 --item_number 100 --item_size_min 1 --item_size_max 5 --seed 5
+Time      : 8.8079s
+Boxes     : 13
+Iterations: 151
+Occupation: 65.538%
+./optalg_cmd --method neighborhood --neighborhood geometry --box_size 50 --item_number 500 --item_size_min 1 --item_size_max 25 --seed 1
+Time      : 15415s
+Boxes     : 67
+Iterations: 4071
+Occupation: 50.518%
+########################
+# Neighborhood (order) #
+########################
+./optalg_cmd --method neighborhood --neighborhood order --box_size 10 --item_number 100 --item_size_min 1 --item_size_max 5 --seed 1
+Time      : 1.0161s
+Boxes     : 10
+Iterations: 6
+Occupation: 92.2%
+./optalg_cmd --method neighborhood --neighborhood order --box_size 10 --item_number 100 --item_size_min 1 --item_size_max 5 --seed 2
+Time      : 0.83193s
+Boxes     : 10
+Iterations: 4
+Occupation: 89%
+./optalg_cmd --method neighborhood --neighborhood order --box_size 10 --item_number 100 --item_size_min 1 --item_size_max 5 --seed 3
+Time      : 0.49312s
+Boxes     : 10
+Iterations: 2
+Occupation: 92.8%
+./optalg_cmd --method neighborhood --neighborhood order --box_size 10 --item_number 100 --item_size_min 1 --item_size_max 5 --seed 4
+Time      : 1.1972s
+Boxes     : 9
+Iterations: 6
+Occupation: 97.889%
+./optalg_cmd --method neighborhood --neighborhood order --box_size 10 --item_number 100 --item_size_min 1 --item_size_max 5 --seed 5
+Time      : 1.1326s
+Boxes     : 9
+Iterations: 6
+Occupation: 94.667%
+./optalg_cmd --method neighborhood --neighborhood order --box_size 50 --item_number 500 --item_size_min 1 --item_size_max 25 --seed 1
+Time      : 5846.2s
+Boxes     : 36
+Iterations: 18
+Occupation: 94.019%
+###################################
+# Neighborhood (geometry-overlap) #
+###################################
+./optalg_cmd --method neighborhood --neighborhood geometry-overlap --box_size 10 --item_number 100 --item_size_min 1 --item_size_max 5 --desired_iter 100 --seed 1
+Time      : 74.962s
+Boxes     : 15
+Iterations: 216
+Occupation: 61.467%
+./optalg_cmd --method neighborhood --neighborhood geometry-overlap --box_size 10 --item_number 100 --item_size_min 1 --item_size_max 5 --desired_iter 100 --seed 2
+Time      : 68.557s
+Boxes     : 15
+Iterations: 205
+Occupation: 59.333%
+./optalg_cmd --method neighborhood --neighborhood geometry-overlap --box_size 10 --item_number 100 --item_size_min 1 --item_size_max 5 --desired_iter 100 --seed 3
+Time      : 76.138s
+Boxes     : 15
+Iterations: 214
+Occupation: 61.867%
+./optalg_cmd --method neighborhood --neighborhood geometry-overlap --box_size 10 --item_number 100 --item_size_min 1 --item_size_max 5 --desired_iter 100 --seed 4
+Time      : 67.188s
+Boxes     : 15
+Iterations: 193
+Occupation: 58.733%
+./optalg_cmd --method neighborhood --neighborhood geometry-overlap --box_size 10 --item_number 100 --item_size_min 1 --item_size_max 5 --desired_iter 100 --seed 5
+Time      : 76.139s
+Boxes     : 14
+Iterations: 194
+Occupation: 60.857%
+./optalg_cmd --method neighborhood --neighborhood geometry-overlap --box_size 50 --item_number 500 --item_size_min 1 --item_size_max 25 --desired_iter 500 --seed 1
+# No result
